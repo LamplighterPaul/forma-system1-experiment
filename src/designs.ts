@@ -11,6 +11,8 @@ export interface Turn {
   changes?: string[]
   stats?: RunStats
   error?: string
+  /** Jev judged this message to be outside what Forma builds. It is kept in the thread but never sent again. */
+  refused?: string
 }
 export interface Design { id: string; turns: Turn[]; pins: Pins; seed: number; createdAt: number }
 
@@ -21,7 +23,7 @@ export const newDesign = (): Design => ({ id: uid(), turns: [], pins: {}, seed: 
 export const newTurn = (text: string): Turn => ({ id: uid(), text })
 export const titleOf = (d: Design) => d.turns[0]?.text ?? 'New design'
 /** The messages Jev sees: everything except remix requests. */
-export const messagesOf = (d: Design) => d.turns.filter(t => !t.remix && !t.error).map(t => t.text)
+export const messagesOf = (d: Design) => d.turns.filter(t => !t.remix && !t.error && !t.refused).map(t => t.text)
 
 export function load(): Design[] {
   try {

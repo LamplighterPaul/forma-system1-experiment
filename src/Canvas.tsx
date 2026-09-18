@@ -4,7 +4,7 @@ import type { Spec } from '@shared/harness'
 import { SLOTS, extractLinks, type DesignText } from '@shared/text'
 import { ActivityFeed, AuthCard, Chart, Chat, Checklist, DataTable, FormCard, Kanban, Meters, SettingsPanel, Sidebar, StatCards, Topbar } from './blocks/app'
 import { Flow } from './blocks/flow'
-import { About, Banner, Contact, Cta, Faq, Features, Footer, Gallery, Hero, Links, Logo, Logos, Navbar, Newsletter, Pricing, Showcase, Stats, Steps, Testimonials, Timeline } from './blocks/marketing'
+import { About, Banner, Contact, Locations, Cta, Faq, Features, Footer, Gallery, Hero, Links, Logo, Logos, Navbar, Newsletter, Pricing, Showcase, Stats, Steps, Testimonials, Timeline } from './blocks/marketing'
 import type { BlockProps } from './blocks/types'
 
 // Catalog block id -> the prebuilt component. Jev picks ids; it never sees this file.
@@ -13,7 +13,7 @@ const BLOCKS: Record<string, ComponentType<BlockProps>> = {
   pricing: Pricing, faq: Faq, form: FormCard, auth: AuthCard, cta: Cta, newsletter: Newsletter, footer: Footer,
   sidebar: Sidebar, stat_cards: StatCards, chart: Chart, table: DataTable, activity: ActivityFeed, checklist: Checklist,
   chat: Chat, settings: SettingsPanel, banner: Banner, about: About, links: Links, steps: Steps, timeline: Timeline, gallery: Gallery,
-  contact: Contact, flow: Flow, kanban: Kanban, meters: Meters,
+  contact: Contact, flow: Flow, kanban: Kanban, meters: Meters, locations: Locations,
 }
 
 // Width of each app-screen block on the three-column dashboard grid.
@@ -80,6 +80,8 @@ export function Canvas({ spec: decided, text, writing = false }: { spec: Spec; t
           </div>
         </div>
       ) : null}
+
+      {spec.layout === 'diagram' ? render('flow') : null}
 
       {spec.layout === 'centered_card' ? (
         <div className="flex min-h-[640px] flex-col items-center justify-center gap-6 bg-muted/40 p-6">

@@ -24,12 +24,21 @@ By [Paul Zammit](https://zammitpaul.com/about). Not affiliated with TypeSafe AI.
 - **Code assembles.** Order, limits, fallbacks and sanitising live in code.
 
 The performance panel shows each stage of a round (Jev decide, Luna write, Jev review) with time, tokens
-and cost. Diagram blocks are drawn with [React Flow](https://reactflow.dev).
+and cost.
+
+**Diagrams** are drawn with [React Flow](https://reactflow.dev). Jev decides that a brief needs one and which
+shape it takes (pipeline, tree, hub or cycle); Luna names the boxes and says how they connect; code validates
+the graph and lays it out. A brief that is only a diagram ("a mind map of…", "org chart for…") gets a
+full-canvas diagram layout.
+
+**Guardrails are System One questions too.** Every call asks Jev whether the brief is a design request at all
+and whether it is something that should not be built (abuse, defamation, instruction override). Code holds the
+thresholds and the refusal wording; Luna is never called for a refused brief.
 
 ## How it works
 
-1. **The catalog** (`shared/catalog.ts`) is everything Jev may pick from: three layouts,
-   32 prebuilt [shadcn/ui](https://ui.shadcn.com) blocks with typed parameters, theme
+1. **The catalog** (`shared/catalog.ts`) is everything Jev may pick from: four layouts,
+   33 prebuilt [shadcn/ui](https://ui.shadcn.com) blocks with typed parameters, theme
    tokens named by meaning rather than hex, and banks of pre-written copy (headlines,
    features, metrics, form fields, FAQs). Every word on the canvas was written in advance.
 2. **One fan-out call** (`shared/harness.ts`). The catalog becomes about 250 typed

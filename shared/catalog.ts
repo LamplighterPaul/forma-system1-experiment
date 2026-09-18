@@ -1,7 +1,7 @@
 // The catalog is everything Jev can pick from. Jev never writes text or code:
 // every string below was written in advance, and Jev only chooses among them.
 
-export type Layout = 'marketing_page' | 'app_screen' | 'centered_card'
+export type Layout = 'marketing_page' | 'app_screen' | 'centered_card' | 'diagram'
 
 export const LAYOUTS: Record<Layout, string> = {
   marketing_page:
@@ -10,6 +10,8 @@ export const LAYOUTS: Record<Layout, string> = {
     'A screen inside a logged-in application: dashboard, admin panel, inbox, table of records, analytics, settings',
   centered_card:
     'One focused card in the middle of the screen: sign in, sign up, waitlist, contact form, short form',
+  diagram:
+    'The whole thing is one diagram: a flowchart, mind map, sitemap, org chart, architecture map, user journey, process map or lifecycle. Not a web page about a product',
 }
 
 // Named by meaning, never by hex: Jev judges words better than numbers.
@@ -439,7 +441,13 @@ export const BLOCKS: BlockDef[] = [
   { id: 'gallery', title: 'Gallery', layouts: ['marketing_page'], need: 'Does the brief describe something visual that calls for an image gallery, such as photography, art, a venue, food, interiors or a product in use?', params: [
     { kind: 'choice', id: 'variant', ask: 'Which gallery layout suits the brief?', fallback: 'grid', options: {
       grid: 'An even grid of equal pictures', mosaic: 'A mosaic with one large picture and smaller ones: editorial, photography' } } ] },
-  { id: 'flow', title: 'Flow diagram', layouts: ['marketing_page', 'app_screen'], need: 'Does the brief describe a process, pipeline, workflow, architecture, automation or journey that a diagram of connected steps would explain?', params: [] },
+  { id: 'flow', title: 'Diagram', layouts: ['marketing_page', 'app_screen', 'diagram'], always: ['diagram'], need: 'Does the brief ask for a diagram, flowchart, mind map, sitemap, org chart or a map of how things connect, or describe a process, pipeline, workflow, architecture, automation or journey that a diagram of connected boxes would explain? A geographic map of places does not count.', params: [
+    { kind: 'choice', id: 'shape', ask: 'Which diagram shape fits what the brief describes?', fallback: 'pipeline', options: {
+      pipeline: 'Left to right stages, possibly branching and merging: pipelines, workflows, data flow, funnels, user journeys, architectures',
+      tree: 'Top down hierarchy: org charts, sitemaps, category trees, decision trees, breakdowns',
+      hub: 'One central idea with related things around it: mind maps, ecosystems, integrations around a product, stakeholder maps',
+      cycle: 'A loop that returns to the start: lifecycles, feedback loops, iterative processes, seasons' } } ] },
+  { id: 'locations', title: 'Locations map', layouts: ['marketing_page'], need: 'Does the brief mention physical places to visit, such as shops, branches, offices, venues or a studio address, or ask for a map of locations?', params: [] },
   { id: 'contact', title: 'Contact details', layouts: ['marketing_page'], need: 'Should the page described in the brief show contact details such as an email address, a location or opening hours?', params: [] },
   { id: 'cta', title: 'Call to action', layouts: ['marketing_page'], need: 'Should the page described in the brief end with a large call-to-action band inviting the visitor to act?', params: [] },
   { id: 'newsletter', title: 'Newsletter signup', layouts: ['marketing_page'], need: 'Does the brief ask for a newsletter signup or an email subscription box, or describe a blog, publication or community that visitors would subscribe to by email?', params: [] },

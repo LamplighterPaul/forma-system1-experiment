@@ -436,3 +436,34 @@ export function Footer({ spec, props, text, links }: BlockProps) {
     </footer>
   )
 }
+
+// A stylised map: no tiles, no network. The pins are positioned by code; the places are named by the writer.
+const PINS = [[28, 38], [58, 56], [74, 30], [42, 70], [86, 64]]
+
+export function Locations({ text }: BlockProps) {
+  const places = items(text, [{ title: 'City centre', body: 'Near the main square', meta: 'Daily 8 to 6' }, { title: 'Harbour', body: 'On the waterfront', meta: 'Daily 9 to 5' }, { title: 'Old town', body: 'By the city gate', meta: 'Tue to Sun 9 to 4' }])
+  return (
+    <section className="section px-6">
+      <SectionHead title={text?.heading || 'Find us'} sub={text?.sub} />
+      <div className="grid gap-4 @3xl:grid-cols-[3fr_2fr]">
+        <div className="relative min-h-72 overflow-hidden rounded-xl border bg-muted/50" role="img" aria-label="Map of locations">
+          <svg viewBox="0 0 100 80" preserveAspectRatio="none" className="absolute inset-0 size-full text-border">
+            <path d="M0 22 L100 14 M0 52 L100 60 M18 0 L30 80 M64 0 L56 80 M0 70 L100 38 M84 0 L92 80" stroke="currentColor" strokeWidth="0.9" fill="none" />
+            <path d="M0 36 C 20 30, 35 48, 52 40 S 85 22, 100 30" stroke="var(--primary)" strokeOpacity="0.25" strokeWidth="5" fill="none" />
+          </svg>
+          {places.map((p, i) => (
+            <div key={p.title} className="absolute -translate-x-1/2 -translate-y-full" style={{ left: `${PINS[i % PINS.length][0]}%`, top: `${PINS[i % PINS.length][1]}%` }}>
+              <span className="block rounded-md bg-primary px-2 py-1 text-xs font-medium whitespace-nowrap text-primary-foreground shadow">{p.title}</span>
+              <span className="mx-auto block size-0 border-x-4 border-t-[6px] border-x-transparent border-t-primary" />
+            </div>
+          ))}
+        </div>
+        <div className="grid content-start gap-3">
+          {places.map(p => (
+            <Card key={p.title} size="sm"><CardHeader><CardTitle className="flex items-center gap-2"><Icon name="map_pin" className="size-4 text-primary" />{p.title}</CardTitle><CardDescription>{p.body}{p.meta ? ` · ${p.meta}` : ''}</CardDescription></CardHeader></Card>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}

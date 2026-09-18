@@ -1,7 +1,8 @@
 import type { Decision, Pins, Previous, Review, RunStats, Spec } from '@shared/harness'
 import type { DesignText } from '@shared/text'
 
-export interface DesignResult { spec: Spec; decisions: Decision[]; stats: RunStats; seed: number; remix: number }
+export interface DesignResult { spec: Spec; decisions: Decision[]; stats: RunStats; seed: number; remix: number; guard?: { design: number; unsafe: number } }
+export interface Refusal { refused: 'unsafe' | 'not_design'; guard: { design: number; unsafe: number }; stats: RunStats }
 export interface ReviewResult { review: Review; stats: RunStats }
 export interface DesignRequest { messages: string[]; pins: Pins; seed: number; prev?: Previous; detectRemix?: boolean; remix?: boolean }
 
@@ -23,7 +24,7 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
   return data as T
 }
 
-export const design = (req: DesignRequest, signal?: AbortSignal) => post<DesignResult>('/api/design', req, signal)
+export const design = (req: DesignRequest, signal?: AbortSignal) => post<DesignResult | Refusal>('/api/design', req, signal)
 export const review = (spec: Spec, signal?: AbortSignal) => post<ReviewResult>('/api/review', { spec }, signal)
 
 export interface WriteStats { model: string; calls: number; ms: number; inputTokens: number; outputTokens: number; usd: number; cached: boolean }

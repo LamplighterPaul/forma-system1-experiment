@@ -70,7 +70,7 @@ function guidance(spec: Spec, id: string): string {
   const block = spec.blocks.find(b => b.id === id)
   const lines = [`SECTION id="${id}" (${BLOCK_BY_ID[id]?.title}): ${g.about}. Settings: ${JSON.stringify(block?.props ?? {})}`,
     `  heading: ${g.heading ?? 'empty'}`, `  sub: ${g.sub ?? 'empty'}`, `  button: ${g.button ?? 'empty'}`]
-  lines.push(g.items ? `  items: exactly ${n}. title: ${g.items.title}. body: ${g.items.body ?? 'empty'}. meta: ${g.items.meta ?? 'empty'}` : '  items: none (empty array)')
+  lines.push(g.items ? `  items: ${g.items.min ? `between ${g.items.min} and ${n}, as many as the subject needs` : `exactly ${n}`}. title: ${g.items.title}. body: ${g.items.body ?? 'empty'}. meta: ${g.items.meta ?? 'empty'}` : '  items: none (empty array)')
   return lines.join('\n')
 }
 

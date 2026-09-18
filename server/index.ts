@@ -5,7 +5,7 @@ import { Hono, type Context } from 'hono'
 import { stream } from 'hono/streaming'
 import { readFile } from 'node:fs/promises'
 import { BLOCKS, BLOCK_BY_ID, LAYOUTS } from '../shared/catalog.ts'
-import { assemble, buildQuestions, buildReview, conversation, outline, readReview, MAX_BRIEF, MAX_MESSAGE, MAX_MESSAGES, REMIX_INTENT, USD_PER_TOKEN, type Pins, type Previous, type RunStats, type Spec } from '../shared/harness.ts'
+import { assemble, buildQuestions, buildReview, conversation, outline, readReview, MAX_BRIEF, MAX_MESSAGE, MAX_MESSAGES, GUARD_DESIGN, GUARD_UNSAFE, REMIX_INTENT, USD_PER_TOKEN, type Pins, type Previous, type RunStats, type Spec } from '../shared/harness.ts'
 import { timingSafeEqual } from 'node:crypto'
 import { decide, deciderName, type Run } from './decider.ts'
 import * as usage from './usage.ts'
@@ -31,6 +31,7 @@ function allow(c: Context): boolean {
   return h.m <= PER_MINUTE && h.d <= PER_DAY && globalCount <= GLOBAL_PER_DAY
 }
 
+const UNSAFE_AT = 0.7, NOT_DESIGN_AT = 0.3
 const cache = new Map<string, unknown>()
 function remember<T>(key: string, value: T): T {
   cache.set(key, value)
@@ -109,6 +110,14 @@ app.post('/api/design', async c => {
     const intent = run.answers[REMIX_INTENT]
     const remix = body.detectRemix === true && messages.length > 1 && intent?.type === 'noul' ? intent.noul : 0
     const stats: RunStats = { decider: run.decider, model: run.model, ms: cached ? 0 : run.ms, questions: run.questions, inputTokens: cached ? 0 : run.inputTokens, usd: cached ? 0 : run.inputTokens * USD_PER_TOKEN, cached }
+    // Jev as guardrail: refuse what is not a design brief, or what should not be built. Code holds the thresholds and the words.
+    const noulOf = (id: string, fallback: number) => { const a = run.answers[id]; return a?.type === 'noul' ? a.noul : fallback }
+    const guard = { design: noulOf(GUARD_DESIGN, 1), unsafe: noulOf(GUARD_UNSAFE, 0) }
+    const refusal = guard.unsafe >= UNSAFE_AT ? 'unsafe' : guard.design <= NOT_DESIGN_AT ? 'not_design' : null
+    if (refusal && process.env.GUARD !== 'off') {
+      usage.spent('design', stats); usage.refused()
+      return c.json({ refused: refusal, guard, stats })
+    }
     if (remix >= 0.5) {
       messages = messages.slice(0, -1)
       seed += 1
@@ -120,7 +129,7 @@ app.post('/api/design', async c => {
     const prev = remix >= 0.5 || body.remix === true ? cleanPrevious(body.prev, true) : cleanPrevious(body.prev, false)
     const { spec, decisions } = assemble(text, run.answers, pins, seed, prev)
     usage.spent('design', stats)
-    return c.json({ spec, decisions, stats, seed, remix: remix >= 0.5 ? remix : 0 })
+    return c.json({ spec, decisions, stats, seed, remix: remix >= 0.5 ? remix : 0, guard })
   } catch (e) {
     usage.failed()
     console.error('design failed', e)

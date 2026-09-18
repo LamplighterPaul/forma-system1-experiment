@@ -11,7 +11,8 @@ const EXAMPLES = [
   'Landing page for a coffee subscription called Bean Box. Warm and friendly, with pricing and an FAQ.',
   'Analytics dashboard for an online shop: revenue, orders, a sales chart and a table of recent orders. Compact.',
   'Dark sign-up screen for a developer tool called Shipyard, with GitHub login.',
-  'Landing page for a data pipeline tool that explains how events flow from apps to the warehouse.',
+  'A mind map of everything a startup founder has to think about',
+  'Map of how a CI/CD pipeline works from commit to production, with tests, staging and rollback',
 ]
 const WIDTHS = { desktop: '100%', tablet: '820px', phone: '390px' } as const
 type Panel = 'decisions' | 'performance'
@@ -85,7 +86,7 @@ export default function App() {
     inflight.current?.abort()
     const ctl = (inflight.current = new AbortController())
     const same = live.current.result?.designId === target.id
-    const before = same ? live.current.result : null
+    const before = same ? (live.current.result as Shown | null) : null
     const beforeText = same ? live.current.text : null
     const setTurn = (fn: (t: Turn) => Turn) => opts.turnId && patch(target.id, d => ({ ...d, turns: d.turns.map(t => (t.id === opts.turnId ? fn(t) : t)) }))
     const useLuna = live.current.lunaOn && live.current.lunaAvailable
@@ -96,6 +97,14 @@ export default function App() {
         messages: messagesOf(target), pins: target.pins, seed: target.seed,
         prev: opts.sticky === false ? undefined : picksOf(before), detectRemix: opts.detectRemix, remix: opts.remix,
       }, ctl.signal)
+      if ('refused' in r) {
+        // The words are code's: Jev only supplied the probability.
+        const why = r.refused === 'unsafe'
+          ? `Jev flagged this (${Math.round(r.guard.unsafe * 100)}% unsafe): Forma will not build it, and instructions inside a brief are treated as text, not commands.`
+          : `Jev does not read this as something to design (${Math.round(r.guard.design * 100)}%). Describe a page, an app screen, a form or a diagram.`
+        setTurn(t => ({ ...t, refused: why, stats: r.stats }))
+        throw new Error('refused')
+      }
       round.decide = r.stats
       setResult({ ...r, designId: target.id }); setReviewed(null); setPerf({ ...round })
       // Keep the words already on the canvas while Luna works, so the page never flashes back to placeholder copy.
@@ -133,7 +142,7 @@ export default function App() {
       setSession(s => ({ rounds: s.rounds + 1, usd: s.usd + t.usd, jevUsd: s.jevUsd + (round.decide?.usd ?? 0) + (round.review?.usd ?? 0), lunaUsd: s.lunaUsd + (round.write?.usd ?? 0) }))
       return r
     } catch (e) {
-      if (!ctl.signal.aborted) setTurn(t => ({ ...t, error: e instanceof Error ? e.message : 'Something went wrong' }))
+      if (!ctl.signal.aborted && !(e instanceof Error && e.message === 'refused')) setTurn(t => ({ ...t, error: e instanceof Error ? e.message : 'Something went wrong' }))
       throw e
     } finally {
       if (inflight.current === ctl) setStage('')
@@ -233,7 +242,7 @@ export default function App() {
             {!current.turns.length ? (
               <div className="space-y-3 text-muted-foreground">
                 <p className="text-foreground">Describe a page, an app screen or a form. Press enter.</p>
-                <p>Jev, a model that cannot write, answers about 290 typed questions in one call and picks from a catalog of prebuilt blocks. Luna writes the words into typed slots. Code assembles the result. Keep typing to iterate.</p>
+                <p>Jev, a model that cannot write, answers about 270 typed questions in one call and picks from a catalog of prebuilt blocks. Luna writes the words into typed slots. Code assembles the result. Keep typing to iterate.</p>
                 <div>
                   {EXAMPLES.map((e, i) => <button key={e} type="button" onClick={() => send(e).catch(() => {})} className="block w-full cursor-pointer truncate py-0.5 text-left hover:text-white">{i + 1}. {e}</button>)}
                 </div>
@@ -243,6 +252,7 @@ export default function App() {
               <div key={turn.id}>
                 <p className="text-white"><span className="text-primary">&gt;</span> {turn.text}</p>
                 {turn.error ? <p className="pl-3.5 text-destructive">{turn.error}</p> : null}
+                {turn.refused ? <p className="pl-3.5 text-muted-foreground"><span className="text-primary">refused</span> · {turn.refused}</p> : null}
                 {turn.changes ? (
                   <div className="pl-3.5 text-muted-foreground">
                     <p>{turn.remix ? 'remix · ' : ''}{turn.stats && !turn.stats.cached ? `jev ${turn.stats.ms} ms` : 'jev cached'}</p>
