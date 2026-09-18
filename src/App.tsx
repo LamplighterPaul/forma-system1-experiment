@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_MESSAGE, type Pins, type Previous } from '@shared/harness'
 import { SLOTS, type DesignText } from '@shared/text'
-import { capabilities, design as requestDesign, review, write, type DesignResult, type ReviewResult } from './api'
+import { capabilities, hello, design as requestDesign, review, write, type DesignResult, type ReviewResult } from './api'
 import { Canvas } from './Canvas'
 import { describeChanges, describeTextChanges, load, messagesOf, newDesign, newTurn, save, titleOf, type Design, type Turn } from './designs'
 import { DecisionsPanel, PerformancePanel, totals, type Perf } from './Panels'
@@ -213,6 +213,7 @@ export default function App() {
 
   // First paint: learn what the server can do, then rebuild whatever design is open (a shared link, or the last one used).
   useEffect(() => {
+    hello()
     capabilities().then(c => { const ok = c.writer === 'luna'; setLunaAvailable(ok); live.current.lunaAvailable = ok }).catch(() => {})
       .finally(() => { if (messagesOf(live.current.current).length) run(live.current.current, { sticky: false }).catch(() => {}) })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

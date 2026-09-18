@@ -9,6 +9,8 @@ interface Day {
   salt: string
   visitors: string[]       // salted hashes, only to count unique people across restarts
   sessions: string[]       // random ids made by the page, one per browser tab
+  opened: string[]         // visitor hashes that loaded the page, whether or not they designed anything
+  referrers: Record<string, number>  // where page loads came from, by host only (t.co, github.com, direct)
   designs: number          // design requests answered (including cached ones)
   jevCalls: number         // requests that actually reached Jev
   cachedAnswers: number
@@ -34,7 +36,7 @@ let days: Record<string, Day> = {}
 try { days = JSON.parse(readFileSync(FILE, 'utf8')) } catch { /* first run, or no volume mounted */ }
 
 const today = () => new Date().toISOString().slice(0, 10)
-const blank = (): Day => ({ salt: randomBytes(16).toString('hex'), visitors: [], sessions: [], designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, usd: 0, writes: 0, writeTokensIn: 0, writeTokensOut: 0, writeUsd: 0, limited: 0, errors: 0 })
+const blank = (): Day => ({ salt: randomBytes(16).toString('hex'), visitors: [], sessions: [], opened: [], referrers: {}, designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, usd: 0, writes: 0, writeTokensIn: 0, writeTokensOut: 0, writeUsd: 0, limited: 0, errors: 0 })
 
 // Records written by an older version lack newer counters; adding to a missing field would poison the sums with NaN.
 function normalise(d: Day): Day {
@@ -72,6 +74,17 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => { 
 /** The anonymous name of a visitor for today: a salted hash that changes every day. */
 export const visitor = (ip: string) => createHash('sha256').update(day().salt + ip).digest('hex').slice(0, 16)
 
+/** A page load. Returns true the first time this visitor opens the page today. */
+export function opened(ip: string, referrer: string): boolean {
+  const d = day()
+  d.opened ??= []; d.referrers ??= {}
+  const who = visitor(ip)
+  const first = !d.opened.includes(who)
+  if (first && d.opened.length < MAX_TRACKED) { d.opened.push(who); d.referrers[referrer] = (d.referrers[referrer] ?? 0) + 1 }
+  dirty = true
+  return first
+}
+
 export function seen(ip: string, session: string | undefined) {
   const d = day()
   const who = visitor(ip)
@@ -103,14 +116,14 @@ export const overBudget = () => total(day()) >= DAILY_USD_CAP
 export function report() {
   for (const d of Object.values(days)) normalise(d)
   const rows = Object.entries(days).sort(([a], [b]) => b.localeCompare(a)).map(([date, d]) => ({
-    date, people: d.visitors.length, sessions: d.sessions.length, designs: d.designs, jevCalls: d.jevCalls,
+    date, opened: (d.opened ?? []).length, referrers: d.referrers ?? {}, people: d.visitors.length, sessions: d.sessions.length, designs: d.designs, jevCalls: d.jevCalls,
     cachedAnswers: d.cachedAnswers, reviews: d.reviews, tokens: d.tokens, jevUsd: Number(d.usd.toFixed(4)),
     lunaCalls: d.writes ?? 0, lunaTokensIn: d.writeTokensIn ?? 0, lunaTokensOut: d.writeTokensOut ?? 0, lunaUsd: Number((d.writeUsd ?? 0).toFixed(4)),
     usd: Number(total(d).toFixed(4)), limited: d.limited, errors: d.errors,
   }))
   const sum = (k: 'designs' | 'jevCalls' | 'tokens' | 'usd' | 'jevUsd' | 'lunaCalls' | 'lunaUsd') => rows.reduce((n, r) => n + r[k], 0)
   return {
-    today: rows.find(r => r.date === today()) ?? { date: today(), people: 0, sessions: 0, designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, jevUsd: 0, lunaCalls: 0, lunaTokensIn: 0, lunaTokensOut: 0, lunaUsd: 0, usd: 0, limited: 0, errors: 0 },
+    today: rows.find(r => r.date === today()) ?? { date: today(), opened: 0, referrers: {}, people: 0, sessions: 0, designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, jevUsd: 0, lunaCalls: 0, lunaTokensIn: 0, lunaTokensOut: 0, lunaUsd: 0, usd: 0, limited: 0, errors: 0 },
     dailyUsdCap: DAILY_USD_CAP,
     allTime: { designs: sum('designs'), jevCalls: sum('jevCalls'), lunaCalls: sum('lunaCalls'), jevUsd: Number(sum('jevUsd').toFixed(4)), lunaUsd: Number(sum('lunaUsd').toFixed(4)), usd: Number(sum('usd').toFixed(4)) },
     days: rows,

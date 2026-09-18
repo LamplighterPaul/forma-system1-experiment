@@ -72,6 +72,18 @@ function gate(c: Context) {
 
 app.get('/up', c => c.text('ok'))
 
+// A page load. Counts people who opened the experiment, separately from people who designed something,
+// and where they came from: the referrer's host only (t.co, github.com), never the full address.
+app.post('/api/hello', async c => {
+  const body = await c.req.json().catch(() => ({}))
+  let from = 'direct'
+  try { if (typeof body.ref === 'string' && body.ref) from = new URL(body.ref).hostname.replace(/^www\./, '').slice(0, 60) } catch { /* not a URL */ }
+  const agent = (c.req.header('user-agent') ?? '').toLowerCase()
+  if (/bot|crawl|spider|preview|headless|curl|python/.test(agent)) return c.json({ ok: true })
+  if (usage.opened(ipOf(c), from)) events.record({ ...whoIs(c), kind: 'visit', note: `opened the page · from ${from}${/android|iphone|mobile/.test(agent) ? ' · phone' : ''}`, ms: 0, usd: 0 })
+  return c.json({ ok: true })
+})
+
 // Private usage report. Disabled unless STATS_TOKEN is set; send it as `Authorization: Bearer <token>`.
 app.get('/api/stats', c => {
   const token = process.env.STATS_TOKEN ?? ''

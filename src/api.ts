@@ -54,3 +54,6 @@ export async function write(spec: Spec, previous: DesignText | null, onPart: (pa
   return done
 }
 export const capabilities = () => fetch('/api/catalog').then(r => r.json() as Promise<{ decider: string; writer: 'luna' | 'none'; questionsPerCall: number }>)
+
+/** Tells the server the page was opened, with the referrer, so visits can be counted apart from designs. */
+export const hello = () => { post('/api/hello', { ref: document.referrer }).catch(() => {}) }

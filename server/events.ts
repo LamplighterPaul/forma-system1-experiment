@@ -10,7 +10,7 @@ export interface FeedEvent {
   who: string               // daily-rotating visitor hash, first 6 characters
   tab: string               // browser-tab session id, first 4 characters
   country: string           // from Cloudflare, e.g. MT; empty when unknown
-  kind: 'design' | 'write' | 'review' | 'refused' | 'error'
+  kind: 'visit' | 'design' | 'write' | 'review' | 'refused' | 'error'
   text?: string             // the latest message of the thread (design and refused only)
   turn?: number             // 1 = a new brief, 2+ = a revision
   note?: string             // layout and blocks, refusal reason, fit score, error message
