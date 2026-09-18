@@ -14,8 +14,14 @@ proxy:
   healthcheck:
     path: /up
 
+volumes:
+  - forma-experiment-data:/data   # usage counters survive deploys
+
 env:
+  clear:
+    DAILY_USD_CAP: 5          # new Jev calls stop for the day once this much is spent
   secret:
+    - STATS_TOKEN            # enables the private GET /api/stats report
     - TYPESAFE_API_KEY       # Jev by TypeSafe AI; without it the server falls back to a labelled mock
 
 registry:

@@ -14,6 +14,9 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 COPY --from=build /app/shared ./shared
+# Usage counters live here; mount a volume at /data to keep them across deploys.
+RUN mkdir -p /data && chown node:node /data
+ENV USAGE_FILE=/data/usage.json
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget -q -O /dev/null http://127.0.0.1:8080/up || exit 1

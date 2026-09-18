@@ -5,7 +5,9 @@ import { Hono, type Context } from 'hono'
 import { readFile } from 'node:fs/promises'
 import { BLOCKS, BLOCK_BY_ID, LAYOUTS } from '../shared/catalog.ts'
 import { assemble, buildQuestions, buildReview, conversation, outline, readReview, MAX_BRIEF, MAX_MESSAGE, MAX_MESSAGES, REMIX_INTENT, USD_PER_TOKEN, type Pins, type Previous, type RunStats, type Spec } from '../shared/harness.ts'
+import { timingSafeEqual } from 'node:crypto'
 import { decide, deciderName, type Run } from './decider.ts'
+import * as usage from './usage.ts'
 
 const app = new Hono()
 
@@ -16,6 +18,7 @@ let globalDay = 0, globalCount = 0
 
 function allow(c: Context): boolean {
   const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for')?.split(',')[0].trim() ?? 'local'
+  usage.seen(ip, c.req.header('x-forma-session'))
   const now = Date.now(), minute = Math.floor(now / 60_000), day = Math.floor(now / 86_400_000)
   if (day !== globalDay) { globalDay = day; globalCount = 0; hits.clear() }
   const h = hits.get(ip) ?? { minute, m: 0, day, d: 0 }
@@ -50,7 +53,22 @@ function cleanPrevious(v: unknown, blocksOnly: boolean): Previous {
   return prev
 }
 
+/** Returns a 429 response when this visitor is over a rate limit or the day's Jev budget is spent. */
+function gate(c: Context) {
+  if (usage.overBudget()) { usage.refused(); return c.json({ error: `Today's Jev budget for this shared experiment is used up. It resets at midnight UTC.` }, 429) }
+  if (!allow(c)) { usage.refused(); return c.json({ error: 'Rate limit reached. This is a shared experiment; try again in a minute.' }, 429) }
+  return null
+}
+
 app.get('/up', c => c.text('ok'))
+
+// Private usage report. Disabled unless STATS_TOKEN is set; send it as `Authorization: Bearer <token>`.
+app.get('/api/stats', c => {
+  const token = process.env.STATS_TOKEN ?? ''
+  const given = (c.req.header('authorization') ?? '').replace(/^Bearer /, '')
+  const ok = token.length >= 16 && given.length === token.length && timingSafeEqual(Buffer.from(given), Buffer.from(token))
+  return ok ? c.json(usage.report()) : c.json({ error: 'Not found' }, 404)
+})
 
 app.get('/api/catalog', c => c.json({
   decider: deciderName(),
@@ -78,7 +96,8 @@ app.post('/api/design', async c => {
   const pins = cleanPins(body.pins)
   let seed = Number.isInteger(body.seed) && body.seed >= 0 ? (body.seed as number) % 1_000_000 : 0
   if (!messages.length || messages[0].length < 3) return c.json({ error: 'Describe what you want to see.' }, 400)
-  if (!allow(c)) return c.json({ error: 'Rate limit reached. This is a shared experiment; try again in a minute.' }, 429)
+  const blocked = gate(c)
+  if (blocked) return blocked
 
   try {
     let { text, run, cached } = await fanOut(messages)
@@ -89,13 +108,17 @@ app.post('/api/design', async c => {
     if (remix >= 0.5) {
       messages = messages.slice(0, -1)
       seed += 1
-      ;({ text, run } = await fanOut(messages))
+      const again = await fanOut(messages)
+      ;({ text, run } = again)
+      if (!again.cached) usage.spent('design', { cached: false, inputTokens: run.inputTokens, usd: run.inputTokens * USD_PER_TOKEN })
     }
     // On a remix the previous look must not stick, otherwise nothing would change.
     const prev = remix >= 0.5 || body.remix === true ? cleanPrevious(body.prev, true) : cleanPrevious(body.prev, false)
     const { spec, decisions } = assemble(text, run.answers, pins, seed, prev)
+    usage.spent('design', stats)
     return c.json({ spec, decisions, stats, seed, remix: remix >= 0.5 ? remix : 0 })
   } catch (e) {
+    usage.failed()
     console.error('design failed', e)
     return c.json({ error: e instanceof Error ? e.message : 'Decider failed' }, 502)
   }
@@ -112,14 +135,18 @@ function cleanSpec(v: unknown): Spec | null {
 app.post('/api/review', async c => {
   const spec = cleanSpec((await c.req.json().catch(() => ({}))).spec)
   if (!spec) return c.json({ error: 'Invalid spec' }, 400)
-  if (!allow(c)) return c.json({ error: 'Rate limit reached.' }, 429)
+  const blocked = gate(c)
+  if (blocked) return blocked
   try {
     const state = outline(spec)
     const key = `r:${JSON.stringify(state)}`
-    const run = (cache.get(key) as Awaited<ReturnType<typeof decide>> | undefined) ?? remember(key, await decide(state, buildReview(spec)))
-    const stats: RunStats = { decider: run.decider, model: run.model, ms: run.ms, questions: run.questions, inputTokens: run.inputTokens, usd: run.inputTokens * USD_PER_TOKEN, cached: false }
+    const hit = cache.get(key) as Run | undefined
+    const run = hit ?? remember(key, await decide(state, buildReview(spec)))
+    const stats: RunStats = { decider: run.decider, model: run.model, ms: hit ? 0 : run.ms, questions: run.questions, inputTokens: hit ? 0 : run.inputTokens, usd: hit ? 0 : run.inputTokens * USD_PER_TOKEN, cached: Boolean(hit) }
+    usage.spent('review', stats)
     return c.json({ review: readReview(spec, run.answers), stats })
   } catch (e) {
+    usage.failed()
     console.error('review failed', e)
     return c.json({ error: e instanceof Error ? e.message : 'Decider failed' }, 502)
   }

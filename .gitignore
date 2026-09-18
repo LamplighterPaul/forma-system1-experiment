@@ -28,3 +28,4 @@ config/deploy.yml
 .kamal/
 .env
 .env.*
+data/

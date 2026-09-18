@@ -60,7 +60,18 @@ For development run `npm run dev` beside the server; Vite proxies `/api`.
 Without `TYPESAFE_API_KEY` the server uses a clearly labelled keyword mock so the pipeline
 can be worked on offline. Its decisions are meaningless.
 
-The public endpoint is rate-limited per visitor and capped per day (`server/index.ts`).
+The public endpoint is rate-limited per visitor, and `DAILY_USD_CAP` (default 5) stops new Jev
+calls for the day once that much has been spent.
+
+Usage is counted per UTC day in `server/usage.ts`: people, sessions, Jev calls, tokens and cost.
+No IP address is stored; visitors are counted by a salted hash that changes daily, and sessions
+by a random id per browser tab. Set `STATS_TOKEN` (16+ characters) to enable the private report:
+
+```sh
+curl -H "Authorization: Bearer $STATS_TOKEN" https://your-host/api/stats
+```
+
+Mount a volume at `/data` to keep the counters across deploys.
 To deploy with [Kamal](https://kamal-deploy.org), copy `config/deploy.example.yml` to
 `config/deploy.yml`.
 
