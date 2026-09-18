@@ -17,7 +17,7 @@ export function PerformancePanel({ perf, session }: { perf: Perf; session: { rou
   const t = totals(perf)
   const rows = [
     { stage: 'decide', model: perf.decide?.model ?? 'jev', s: perf.decide, tokens: perf.decide ? `${perf.decide.inputTokens.toLocaleString()} in` : '', note: perf.decide ? `${perf.decide.questions} questions` : '' },
-    { stage: 'write', model: perf.write?.model ?? 'luna', s: perf.write, tokens: perf.write ? `${perf.write.inputTokens.toLocaleString()} in · ${perf.write.outputTokens.toLocaleString()} out` : '', note: perf.writer === 'on' ? '' : `luna ${perf.writer}` },
+    { stage: 'write', model: perf.write?.model ?? 'luna', s: perf.write, tokens: perf.write ? `${perf.write.inputTokens.toLocaleString()} in · ${perf.write.outputTokens.toLocaleString()} out` : '', note: perf.writer === 'on' ? (perf.write && !perf.write.cached ? `${perf.write.calls} parallel calls` : '') : `luna ${perf.writer}` },
     { stage: 'review', model: perf.review?.model ?? 'jev', s: perf.review, tokens: perf.review ? `${perf.review.inputTokens.toLocaleString()} in` : '', note: perf.review ? `${perf.review.questions} questions` : '' },
   ]
   return (
@@ -35,7 +35,7 @@ export function PerformancePanel({ perf, session }: { perf: Perf; session: { rou
               <td className="border-b py-2 text-right">{r.s ? usd(r.s.usd) : '–'}</td>
             </tr>
           ))}
-          <tr className="text-white"><td className="py-2" colSpan={2}>total · {t.calls} call{t.calls === 1 ? '' : 's'}</td><td className="py-2">{ms(t.ms)}</td><td /><td className="py-2 text-right">{usd(t.usd)}</td></tr>
+          <tr className="text-white"><td className="py-2" colSpan={2}>total</td><td className="py-2">{ms(t.ms)}</td><td /><td className="py-2 text-right">{usd(t.usd)}</td></tr>
         </tbody>
       </table>
 

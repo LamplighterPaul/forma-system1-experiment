@@ -11,6 +11,8 @@ proxy:
   host: forma.example.com
   app_port: 8080
   ssl: true
+  buffering:
+    responses: false        # Luna's text is streamed to the page as it is written
   healthcheck:
     path: /up
 

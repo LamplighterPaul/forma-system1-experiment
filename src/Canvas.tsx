@@ -1,7 +1,7 @@
 import type { CSSProperties, ComponentType } from 'react'
 import { ACCENTS, BASES } from '@shared/catalog'
 import type { Spec } from '@shared/harness'
-import { extractLinks, type DesignText } from '@shared/text'
+import { SLOTS, extractLinks, type DesignText } from '@shared/text'
 import { ActivityFeed, AuthCard, Chart, Chat, Checklist, DataTable, FormCard, Kanban, Meters, SettingsPanel, Sidebar, StatCards, Topbar } from './blocks/app'
 import { Flow } from './blocks/flow'
 import { About, Banner, Contact, Cta, Faq, Features, Footer, Gallery, Hero, Links, Logo, Logos, Navbar, Newsletter, Pricing, Showcase, Stats, Steps, Testimonials, Timeline } from './blocks/marketing'
@@ -48,14 +48,17 @@ function themeStyle({ theme }: Spec): CSSProperties {
   return vars as CSSProperties
 }
 
-export function Canvas({ spec: decided, text }: { spec: Spec; text?: DesignText | null }) {
+export function Canvas({ spec: decided, text, writing = false }: { spec: Spec; text?: DesignText | null; writing?: boolean }) {
   // The writer's words replace the pre-written copy; everything structural stays Jev's.
   const spec: Spec = text ? { ...decided, copy: { name: text.name, headline: text.headline, sub: text.sub, cta: text.cta } } : decided
-  const links = text?.links ?? extractLinks(decided.brief).map(url => ({ url, label: url.startsWith('mailto:') ? 'Email' : new URL(url).hostname.replace(/^www\./, '') }))
+  const links = text?.links.length ? text.links : extractLinks(decided.brief).map(url => ({ url, label: url.startsWith('mailto:') ? 'Email' : new URL(url).hostname.replace(/^www\./, '') }))
   const render = (id: string) => {
     const block = spec.blocks.find(b => b.id === id)
     const Cmp = BLOCKS[id]
-    return block && Cmp ? <Cmp key={id} spec={spec} props={block.props} text={text?.blocks[id]} links={links} /> : null
+    if (!block || !Cmp) return null
+    // While Luna is still writing a section, its placeholder copy is dimmed so the swap reads as "filling in", not as a glitch.
+    const pending = writing && id in SLOTS && !text?.blocks[id]
+    return <div key={id} className={`transition-opacity duration-300 ${pending ? 'animate-pulse opacity-40' : ''}`}><Cmp spec={spec} props={block.props} text={text?.blocks[id]} links={links} /></div>
   }
   const body = spec.blocks.filter(b => b.id !== 'sidebar')
   // Wide blocks only share a row when a narrow one (activity, checklist) exists to sit beside them.

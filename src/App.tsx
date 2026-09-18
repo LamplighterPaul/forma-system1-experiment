@@ -14,7 +14,7 @@ const EXAMPLES = [
   'Landing page for a data pipeline tool that explains how events flow from apps to the warehouse.',
 ]
 const WIDTHS = { desktop: '100%', tablet: '820px', phone: '390px' } as const
-type Panel = 'decisions' | 'performance' | null
+type Panel = 'decisions' | 'performance'
 
 const picksOf = (r: DesignResult | null): Previous => Object.fromEntries((r?.decisions ?? []).filter(d => d.kind !== 'bank').map(d => [d.id, d.picked]))
 const stored = (key: string, fallback: string) => { try { return localStorage.getItem(key) ?? fallback } catch { return fallback } }
@@ -53,7 +53,8 @@ export default function App() {
   const [draft, setDraft] = useState('')
   const [stage, setStage] = useState<'' | 'jev' | 'luna' | 'review'>('')
   const [width, setWidth] = useState<keyof typeof WIDTHS>('desktop')
-  const [panel, setPanel] = useState<Panel>(null)
+  const [panel, setPanel] = useState<Panel>('decisions')
+  const [showPanel, setShowPanel] = useState(() => stored('forma.panel', 'on') === 'on')
   const [showDesigns, setShowDesigns] = useState(false)
   const [lunaOn, setLunaOn] = useState(() => stored('forma.luna', 'on') === 'on')
   const [lunaAvailable, setLunaAvailable] = useState(true)
@@ -72,7 +73,7 @@ export default function App() {
   useEffect(() => save(designs), [designs])
   useEffect(() => { threadEnd.current?.scrollIntoView({ block: 'end' }) }, [current.turns.length, stage])
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setPanel(null); setShowDesigns(false) } }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowDesigns(false) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -110,7 +111,12 @@ export default function App() {
       if (useLuna) {
         setStage('luna')
         try {
-          const w = await write(r.spec, beforeText, ctl.signal)
+          // Parts land as Luna's parallel calls finish: headline first, then sections. Each one is painted immediately.
+          let partial: DesignText = beforeText ?? { name: r.spec.copy.name, headline: r.spec.copy.headline, sub: r.spec.copy.sub, cta: r.spec.copy.cta, blocks: {}, links: [] }
+          const w = await write(r.spec, beforeText, part => {
+            partial = part.type === 'globals' ? { ...partial, name: part.name, headline: part.headline, sub: part.sub, cta: part.cta, links: part.links } : { ...partial, blocks: { ...partial.blocks, ...part.blocks } }
+            setText(partial)
+          }, ctl.signal)
           if (w.writer === 'none') { setLunaAvailable(false); round.writer = 'unavailable' }
           words = w.text; round.write = w.stats
           setText(words); setPerf({ ...round })
@@ -202,7 +208,7 @@ export default function App() {
         </p>
       </header>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <div className={`grid min-h-0 flex-1 lg:grid-cols-[320px_minmax(0,1fr)] ${showPanel ? 'xl:grid-cols-[320px_minmax(0,1fr)_340px]' : ''}`}>
         <aside className="flex min-h-0 flex-col border-r lg:overflow-hidden">
           <div className="flex items-center justify-between border-b px-3 py-1.5">
             <button type="button" onClick={() => setShowDesigns(v => !v)} className="min-w-0 cursor-pointer truncate text-left text-muted-foreground hover:text-white">
@@ -259,26 +265,31 @@ export default function App() {
           </div>
         </aside>
 
-        <main className="relative flex min-h-[70svh] min-w-0 flex-col bg-[#0a0a0b]">
+        <main className="flex min-h-[70svh] min-w-0 flex-col bg-[#0a0a0b]">
           <div className="flex items-center justify-between gap-3 border-b bg-background px-3 py-1.5">
             <p className="truncate text-muted-foreground">{shown ? `${shown.spec.layout.replaceAll('_', ' ')} · ${shown.spec.blocks.length} blocks · ${shown.spec.theme.accent} on ${shown.spec.theme.base}${shown.spec.theme.dark ? ' · dark' : ''}${shown.seed ? ` · remix ${shown.seed}` : ''}` : 'canvas'}</p>
             <p className="flex shrink-0">{(['desktop', 'tablet', 'phone'] as const).map(w => <Key key={w} active={width === w} onClick={() => setWidth(w)}>{w}</Key>)}</p>
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-3">
             <div className={`mx-auto overflow-hidden border transition-[max-width,opacity] duration-300 ${stage === 'jev' ? 'opacity-60' : ''}`} style={{ maxWidth: WIDTHS[width] }}>
-              {shown ? <Canvas spec={shown.spec} text={text} /> : <p className="grid min-h-[60svh] place-items-center p-10 text-muted-foreground">{busy ? 'jev is deciding…' : 'the canvas is empty'}</p>}
+              {shown ? <Canvas spec={shown.spec} text={text} writing={stage === 'luna'} /> : <p className="grid min-h-[60svh] place-items-center p-10 text-muted-foreground">{busy ? 'jev is deciding…' : 'the canvas is empty'}</p>}
             </div>
           </div>
 
-          {panel && shown ? (
-            <section className="absolute inset-y-0 right-0 z-10 flex w-full max-w-[380px] flex-col border-l bg-background shadow-[-12px_0_32px_rgb(0_0_0/0.5)]">
-              <div className="flex items-center justify-between border-b px-3 py-1.5"><p className="text-white">{panel}</p><Key onClick={() => setPanel(null)}>esc close</Key></div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                {panel === 'decisions' ? <DecisionsPanel result={shown} reviewed={reviewed} pins={current.pins} onPin={onPin} /> : <PerformancePanel perf={perf} session={session} />}
-              </div>
-            </section>
-          ) : null}
         </main>
+
+        {showPanel ? (
+          <aside className="flex min-h-0 flex-col border-l lg:col-span-2 lg:border-t xl:col-span-1 xl:border-t-0 xl:overflow-hidden">
+            <div className="flex items-center justify-between border-b px-3 py-1.5">
+              <p className="flex"><Key active={panel === 'decisions'} onClick={() => setPanel('decisions')}>decisions</Key><Key active={panel === 'performance'} onClick={() => setPanel('performance')}>performance</Key></p>
+              <Key onClick={() => { setShowPanel(false); store('forma.panel', 'off') }}>hide</Key>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              {!shown ? <p className="text-muted-foreground">Every typed decision Jev makes appears here with its probabilities, and what each round cost.</p>
+                : panel === 'decisions' ? <DecisionsPanel result={shown} reviewed={reviewed} pins={current.pins} onPin={onPin} /> : <PerformancePanel perf={perf} session={session} />}
+            </div>
+          </aside>
+        ) : null}
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 border-t px-3 py-1">
@@ -293,8 +304,7 @@ export default function App() {
           ) : 'ready'}
         </p>
         <p className="flex flex-wrap items-center gap-x-1">
-          <Key active={panel === 'decisions'} onClick={() => setPanel(p => (p === 'decisions' ? null : 'decisions'))} disabled={!shown}>decisions</Key>
-          <Key active={panel === 'performance'} onClick={() => setPanel(p => (p === 'performance' ? null : 'performance'))} disabled={!shown}>performance</Key>
+          {!showPanel ? <Key onClick={() => { setShowPanel(true); store('forma.panel', 'on') }}>decisions</Key> : null}
           <Key onClick={remix} disabled={busy || !shown} title="Explore Jev's runner-up choices. No model call.">remix</Key>
           <span className="pl-2 text-muted-foreground">v{__APP_VERSION__} · <a href="https://zammitpaul.com/about" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-white">Paul Zammit</a> · <a href="https://github.com/LamplighterPaul/forma-system1-experiment" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-white">source</a></span>
         </p>

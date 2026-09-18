@@ -72,7 +72,7 @@ export function Hero({ spec, props, text }: BlockProps) {
   const { headline, sub, cta } = spec.copy
   const eyebrow = text?.sub || (props.badge ? 'New · now available' : '')
   const badge = eyebrow ? <Badge variant="secondary" className="mb-5"><Icon name="sparkles" className="size-3" /> {eyebrow}</Badge> : null
-  const second = text?.button || 'Learn more'
+  const second = text?.button && text.button.toLowerCase() !== cta.toLowerCase() ? text.button : 'Learn more'
   if (props.variant === 'split') {
     return (
       <section className="section grid items-center gap-10 px-6 @3xl:grid-cols-2">

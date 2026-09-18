@@ -2,6 +2,7 @@
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono, type Context } from 'hono'
+import { stream } from 'hono/streaming'
 import { readFile } from 'node:fs/promises'
 import { BLOCKS, BLOCK_BY_ID, LAYOUTS } from '../shared/catalog.ts'
 import { assemble, buildQuestions, buildReview, conversation, outline, readReview, MAX_BRIEF, MAX_MESSAGE, MAX_MESSAGES, REMIX_INTENT, USD_PER_TOKEN, type Pins, type Previous, type RunStats, type Spec } from '../shared/harness.ts'
@@ -155,26 +156,35 @@ app.post('/api/review', async c => {
   }
 })
 
-// Luna writes the words for a design Jev has decided. Optional: without a key, or with the switch off, the pre-written copy stays.
+// Luna writes the words for a design Jev has decided. The reply is newline-delimited JSON: parts are sent
+// as each parallel call lands (headline first in practice), then a final "done" line with the whole text and the cost.
 app.post('/api/write', async c => {
   const body = await c.req.json().catch(() => ({}))
   const spec = cleanSpec(body.spec)
   if (!spec) return c.json({ error: 'Invalid spec' }, 400)
-  if (writerName() === 'none') return c.json({ text: null, writer: 'none' })
-  const blocked = gate(c)
+  const available = writerName() !== 'none'
+  const blocked = available ? gate(c) : null
   if (blocked) return blocked
-  try {
-    const previous = body.previous && typeof body.previous === 'object' && JSON.stringify(body.previous).length < 20_000 ? (body.previous as DesignText) : null
-    const key = `w:${spec.brief}|${JSON.stringify(spec.blocks.map(b => [b.id, b.props]))}|${spec.theme.font}${spec.theme.dark}`
-    const hit = cache.get(key) as WriteRun | undefined
-    const run = hit ?? remember(key, await write(spec, previous))
-    if (!hit) usage.wrote(run)
-    return c.json({ text: run.text, writer: 'luna', stats: { model: run.model, ms: hit ? 0 : run.ms, inputTokens: hit ? 0 : run.inputTokens, outputTokens: hit ? 0 : run.outputTokens, usd: hit ? 0 : run.usd, cached: Boolean(hit) } })
-  } catch (e) {
-    usage.failed()
-    console.error('write failed', e)
-    return c.json({ error: e instanceof Error ? e.message : 'Writer failed' }, 502)
-  }
+  const previous = body.previous && typeof body.previous === 'object' && JSON.stringify(body.previous).length < 20_000 ? (body.previous as DesignText) : null
+  const key = `w:${spec.brief}|${JSON.stringify(spec.blocks.map(b => [b.id, b.props]))}|${spec.copy.name}`
+  c.header('Content-Type', 'application/x-ndjson; charset=utf-8')
+  c.header('Cache-Control', 'no-store')
+  c.header('X-Accel-Buffering', 'no')
+  return stream(c, async out => {
+    const send = (line: unknown) => out.write(`${JSON.stringify(line)}\n`)
+    if (!available) { await send({ type: 'done', text: null, writer: 'none' }); return }
+    try {
+      const hit = cache.get(key) as WriteRun | undefined
+      const run = hit ?? remember(key, await write(spec, previous, part => { void send(part) }))
+      if (!hit) usage.wrote(run)
+      await send({ type: 'done', writer: 'luna', text: run.text,
+        stats: { model: run.model, calls: hit ? 0 : run.calls, ms: hit ? 0 : run.ms, inputTokens: hit ? 0 : run.inputTokens, outputTokens: hit ? 0 : run.outputTokens, usd: hit ? 0 : run.usd, cached: Boolean(hit) } })
+    } catch (e) {
+      usage.failed()
+      console.error('write failed', e)
+      await send({ type: 'error', error: e instanceof Error ? e.message : 'Writer failed' })
+    }
+  })
 })
 
 app.use('/assets/*', async (c, next) => { await next(); c.header('Cache-Control', 'public, max-age=31536000, immutable') })

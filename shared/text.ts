@@ -21,7 +21,7 @@ export interface SlotGuide { about: string; heading?: string; sub?: string; butt
 
 export const SLOTS: Record<string, SlotGuide> = {
   banner: { about: 'A one-line announcement bar above the navigation', heading: 'The announcement, under 70 characters', button: 'Two or three words for its link' },
-  hero: { about: 'The opening section', sub: 'An eyebrow label of at most four words shown above the headline, or empty', button: 'Secondary button label, two or three words' },
+  hero: { about: 'The opening section', sub: 'An eyebrow label of at most four words shown above the headline, or empty', button: 'Secondary button label, two or three words, for a different action than the primary button (for example Learn more, See pricing, Get in touch)' },
   about: { about: 'An introduction to the person or organisation', heading: 'Section heading', sub: 'Two to four warm, concrete sentences in the first person if this is a personal site',
     items: { count: 3, title: 'A short fact label such as Based in, Focus, Experience', body: 'The fact, a few words' } },
   links: { about: 'A list of link buttons', heading: 'Section heading, or empty', sub: 'One short line, or empty' },
