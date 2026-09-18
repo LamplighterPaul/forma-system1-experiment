@@ -216,7 +216,7 @@ export default function App() {
         </p>
       </header>
 
-      <div className={`grid min-h-0 flex-1 lg:grid-cols-[320px_minmax(0,1fr)] ${showPanel ? 'xl:grid-cols-[320px_minmax(0,1fr)_340px]' : ''}`}>
+      <div className={`grid min-h-0 flex-1 lg:grid-cols-[320px_minmax(0,1fr)] ${showPanel ? 'min-[1150px]:grid-cols-[300px_minmax(0,1fr)_320px]' : ''}`}>
         <aside className="flex min-h-0 flex-col border-r lg:overflow-hidden">
           <div className="flex items-center justify-between border-b px-3 py-1.5">
             <button type="button" onClick={() => setShowDesigns(v => !v)} className="min-w-0 cursor-pointer truncate text-left text-muted-foreground hover:text-white">
@@ -289,7 +289,7 @@ export default function App() {
         </main>
 
         {showPanel ? (
-          <aside className="flex min-h-0 flex-col border-l lg:col-span-2 lg:border-t xl:col-span-1 xl:border-t-0 xl:overflow-hidden">
+          <aside className="flex min-h-0 flex-col border-l lg:col-span-2 lg:border-t min-[1150px]:col-span-1 min-[1150px]:border-t-0 min-[1150px]:overflow-hidden">
             <div className="flex items-center justify-between border-b px-3 py-1.5">
               <p className="flex"><Key active={panel === 'decisions'} onClick={() => setPanel('decisions')}>decisions</Key><Key active={panel === 'performance'} onClick={() => setPanel('performance')}>performance</Key></p>
               <Key onClick={() => { setShowPanel(false); store('forma.panel', 'off') }}>hide</Key>
