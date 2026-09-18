@@ -1,7 +1,7 @@
 import type { Decision, Pins, Previous, Review, RunStats, Spec } from '@shared/harness'
 import type { DesignText } from '@shared/text'
 
-export interface DesignResult { spec: Spec; decisions: Decision[]; stats: RunStats; seed: number; remix: number; guard?: { design: number; unsafe: number } }
+export interface DesignResult { spec: Spec; decisions: Decision[]; stats: RunStats; seed: number; remix: number; guard?: { design: number; unsafe: number }; needsWords?: number }
 export interface Refusal { refused: 'unsafe' | 'not_design'; guard: { design: number; unsafe: number }; stats: RunStats }
 export interface ReviewResult { review: Review; stats: RunStats }
 export interface DesignRequest { messages: string[]; pins: Pins; seed: number; prev?: Previous; detectRemix?: boolean; remix?: boolean }
@@ -32,8 +32,8 @@ export interface WriteResult { text: DesignText | null; writer: 'luna' | 'none';
 export type WritePart = { type: 'globals'; name: string; headline: string; sub: string; cta: string; links: DesignText['links'] } | { type: 'blocks'; blocks: DesignText['blocks'] }
 
 /** Streams the writer's parts as they land (newline-delimited JSON) and resolves with the final text. */
-export async function write(spec: Spec, previous: DesignText | null, onPart: (part: WritePart) => void, signal?: AbortSignal): Promise<WriteResult> {
-  const res = await fetch('/api/write', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forma-Session': sessionId() }, body: JSON.stringify({ spec, previous }), signal })
+export async function write(spec: Spec, previous: DesignText | null, onPart: (part: WritePart) => void, signal?: AbortSignal, only?: string[]): Promise<WriteResult> {
+  const res = await fetch('/api/write', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forma-Session': sessionId() }, body: JSON.stringify({ spec, previous, only }), signal })
   if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? `Request failed (${res.status})`)
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
   let buffer = '', done: WriteResult | null = null

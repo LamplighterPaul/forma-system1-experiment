@@ -5,7 +5,7 @@ import { Hono, type Context } from 'hono'
 import { stream } from 'hono/streaming'
 import { readFile } from 'node:fs/promises'
 import { BLOCKS, BLOCK_BY_ID, LAYOUTS } from '../shared/catalog.ts'
-import { assemble, buildQuestions, buildReview, conversation, outline, readReview, MAX_BRIEF, MAX_MESSAGE, MAX_MESSAGES, GUARD_DESIGN, GUARD_UNSAFE, REMIX_INTENT, USD_PER_TOKEN, type Pins, type Previous, type RunStats, type Spec } from '../shared/harness.ts'
+import { assemble, buildQuestions, buildReview, conversation, outline, readReview, MAX_BRIEF, MAX_MESSAGE, MAX_MESSAGES, GUARD_DESIGN, GUARD_UNSAFE, REMIX_INTENT, ROUTE_WORDS, USD_PER_TOKEN, type Pins, type Previous, type RunStats, type Spec } from '../shared/harness.ts'
 import { timingSafeEqual } from 'node:crypto'
 import { decide, deciderName, type Run } from './decider.ts'
 import { arrange, type Arrangement } from './arrange.ts'
@@ -130,6 +130,8 @@ app.post('/api/design', async c => {
     // Jev as guardrail: refuse what is not a design brief, or what should not be built. Code holds the thresholds and the words.
     const noulOf = (id: string, fallback: number) => { const a = run.answers[id]; return a?.type === 'noul' ? a.noul : fallback }
     const guard = { design: noulOf(GUARD_DESIGN, 1), unsafe: noulOf(GUARD_UNSAFE, 0) }
+    // 1 = the writer is needed. A first brief always needs words; so does anything Jev is unsure about.
+    const needsWords = messages.length > 1 ? noulOf(ROUTE_WORDS, 1) : 1
     const refusal = guard.unsafe >= UNSAFE_AT ? 'unsafe' : guard.design <= NOT_DESIGN_AT ? 'not_design' : null
     if (refusal && process.env.GUARD !== 'off') {
       usage.spent('design', stats); usage.refused()
@@ -149,8 +151,8 @@ app.post('/api/design', async c => {
     const { spec, decisions } = assemble(text, run.answers, pins, seed, prev)
     usage.spent('design', stats)
     events.record({ ...whoIs(c), kind: 'design', text: asked, turn: turns, ms: stats.ms, usd: stats.usd, cached,
-      note: `${remix >= 0.5 || body.remix === true ? 'remix · ' : ''}${spec.layout.replaceAll('_', ' ')} · ${spec.blocks.length} blocks · ${spec.theme.accent}${spec.theme.dark ? ' dark' : ''}` })
-    return c.json({ spec, decisions, stats, seed, remix: remix >= 0.5 ? remix : 0, guard })
+      note: `${remix >= 0.5 || body.remix === true ? 'remix · ' : ''}${spec.layout.replaceAll('_', ' ')} · ${spec.blocks.length} blocks · ${spec.theme.accent}${spec.theme.dark ? ' dark' : ''}${turns > 1 && needsWords < 0.35 ? ` · jev: no words needed (${Math.round(needsWords * 100)}%)` : ''}` })
+    return c.json({ spec, decisions, stats, seed, remix: remix >= 0.5 ? remix : 0, guard, needsWords })
   } catch (e) {
     usage.failed()
     events.record({ ...whoIs(c), kind: 'error', note: `design: ${e instanceof Error ? e.message.slice(0, 120) : 'failed'}`, ms: 0, usd: 0 })
@@ -202,7 +204,8 @@ app.post('/api/write', async c => {
   const blocked = available ? gate(c) : null
   if (blocked) return blocked
   const previous = body.previous && typeof body.previous === 'object' && JSON.stringify(body.previous).length < 20_000 ? (body.previous as DesignText) : null
-  const key = `w:${spec.brief}|${JSON.stringify(spec.blocks.map(b => [b.id, b.props]))}|${spec.copy.name}`
+  const only = Array.isArray(body.only) ? (body.only as unknown[]).filter(x => typeof x === 'string' && x in BLOCK_BY_ID).slice(0, 12) as string[] : undefined
+  const key = `w:${only?.join(',') ?? ''}:${spec.brief}|${JSON.stringify(spec.blocks.map(b => [b.id, b.props]))}|${spec.copy.name}`
   c.header('Content-Type', 'application/x-ndjson; charset=utf-8')
   c.header('Cache-Control', 'no-store')
   c.header('X-Accel-Buffering', 'no')
@@ -219,7 +222,7 @@ app.post('/api/write', async c => {
         const fresh = await write(spec, previous, part => {
           if (part.type === 'blocks' && part.blocks.flow) arranging = arrange(spec, part.blocks.flow.items).catch(e => { console.error('arrange failed', e); return null })
           void send(part)
-        })
+        }, only)
         const arranged = await arranging
         if (arranged && fresh.text.blocks.flow) {
           fresh.text.blocks.flow = { ...fresh.text.blocks.flow, items: arranged.items }

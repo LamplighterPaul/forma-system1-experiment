@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_MESSAGE, type Pins, type Previous } from '@shared/harness'
-import type { DesignText } from '@shared/text'
+import { SLOTS, type DesignText } from '@shared/text'
 import { capabilities, design as requestDesign, review, write, type DesignResult, type ReviewResult } from './api'
 import { Canvas } from './Canvas'
 import { describeChanges, describeTextChanges, load, messagesOf, newDesign, newTurn, save, titleOf, type Design, type Turn } from './designs'
@@ -25,6 +25,8 @@ function fromUrl(): Design | null {
   const messages = [...q.getAll('m'), ...(q.get('brief') ? [q.get('brief')!] : [])].map(m => m.trim().slice(0, MAX_MESSAGE)).filter(Boolean)
   return messages.length ? { ...newDesign(), turns: messages.map(newTurn), seed: Math.max(0, Number(q.get('s')) || 0) } : null
 }
+
+const remixedTurn = (r: DesignResult, opts: { remix?: boolean }) => r.remix >= 0.5 || opts.remix === true
 
 interface RunOptions { detectRemix?: boolean; remix?: boolean; turnId?: string; sticky?: boolean }
 interface Shown extends DesignResult { designId: string }
@@ -116,7 +118,19 @@ export default function App() {
       history.replaceState(null, '', `?${q}`)
 
       let words: DesignText | null = null
-      if (useLuna) {
+      // Jev routes the turn: a change of colour or layout needs no new words, so Luna is not called at all.
+      // Code keeps the veto: any section still without text means Luna runs, whatever Jev thinks.
+      const SKIP_BELOW = 0.35
+      const missing = beforeText ? r.spec.blocks.filter(b => b.id in SLOTS && !beforeText.blocks[b.id]).map(b => b.id) : []
+      const covered = beforeText !== null && missing.length === 0
+      // No wording change, but a new section arrived: Luna writes only that section and the rest stays word for word.
+      const only = beforeText && missing.length && (remixedTurn(r, opts) || (r.needsWords ?? 1) < 0.35) ? missing : undefined
+      const remixed = remixedTurn(r, opts)
+      if (useLuna && covered && (remixed || (r.needsWords ?? 1) < SKIP_BELOW)) {
+        words = beforeText; round.writer = 'skipped'; round.needsWords = remixed ? 0 : r.needsWords
+        setText(words); setPerf({ ...round })
+        setTurn(t => ({ ...t, changes: [...(t.changes ?? []), `luna skipped · no new words needed`] }))
+      } else if (useLuna) {
         setStage('luna')
         try {
           // Parts land as Luna's parallel calls finish: headline first, then sections. Each one is painted immediately.
@@ -124,7 +138,7 @@ export default function App() {
           const w = await write(r.spec, beforeText, part => {
             partial = part.type === 'globals' ? { ...partial, name: part.name, headline: part.headline, sub: part.sub, cta: part.cta, links: part.links } : { ...partial, blocks: { ...partial.blocks, ...part.blocks } }
             setText(partial)
-          }, ctl.signal)
+          }, ctl.signal, only)
           if (w.writer === 'none') { setLunaAvailable(false); round.writer = 'unavailable' }
           words = w.text; round.write = w.stats
           setText(words); setPerf({ ...round })
@@ -311,7 +325,7 @@ export default function App() {
           {shown && perf.decide ? (
             <>
               <span className="text-foreground">jev</span> {perf.decide.cached ? 'cached' : `${perf.decide.ms} ms`} · {perf.decide.questions}q
-              {perf.write ? <> │ <span className="text-foreground">luna</span> {perf.write.cached ? 'cached' : `${(perf.write.ms / 1000).toFixed(1)} s`}</> : perf.writer !== 'on' ? <> │ luna {perf.writer}</> : null}
+              {perf.write ? <> │ <span className="text-foreground">luna</span> {perf.write.cached ? 'cached' : `${(perf.write.ms / 1000).toFixed(1)} s`}</> : perf.writer !== 'on' ? <> │ luna {perf.writer === 'skipped' ? 'skipped by jev' : perf.writer}</> : null}
               {reviewed ? <> │ <span className="text-foreground">fit</span> {reviewed.review.fit.toFixed(1)}/3</> : null}
               {' '}│ <span className="text-white">{t.ms >= 1000 ? `${(t.ms / 1000).toFixed(1)} s` : `${t.ms} ms`} · ${t.usd.toFixed(5)}</span>
             </>

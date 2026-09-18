@@ -7,7 +7,7 @@ import { ReviewCard, Trace } from './Trace'
 const usd = (n: number) => `$${n.toFixed(5)}`
 const ms = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(2)} s` : `${n} ms`)
 
-export interface Perf { decide?: RunStats; write?: WriteStats; review?: RunStats; writer: 'on' | 'off' | 'unavailable' }
+export interface Perf { decide?: RunStats; write?: WriteStats; review?: RunStats; writer: 'on' | 'off' | 'unavailable' | 'skipped'; /** Jev's probability that this turn needed the writer. */ needsWords?: number }
 
 export function totals(p: Perf) {
   const stages = [p.decide, p.write, p.write?.arrange, p.review].filter(Boolean) as { ms: number; usd: number }[]
@@ -18,7 +18,7 @@ export function PerformancePanel({ perf, session }: { perf: Perf; session: { rou
   const t = totals(perf)
   const rows: { stage: string; model: string; s?: { ms: number; usd: number; cached?: boolean }; tokens: string; note: string }[] = [
     { stage: 'decide', model: perf.decide?.model ?? 'jev', s: perf.decide, tokens: perf.decide ? `${perf.decide.inputTokens.toLocaleString()} in` : '', note: perf.decide ? `${perf.decide.questions} questions` : '' },
-    { stage: 'write', model: perf.write?.model ?? 'luna', s: perf.write, tokens: perf.write ? `${perf.write.inputTokens.toLocaleString()} in · ${perf.write.outputTokens.toLocaleString()} out` : '', note: perf.writer === 'on' ? (perf.write && !perf.write.cached ? `${perf.write.calls} parallel calls` : '') : `luna ${perf.writer}` },
+    { stage: 'write', model: perf.write?.model ?? 'luna', s: perf.write, tokens: perf.write ? `${perf.write.inputTokens.toLocaleString()} in · ${perf.write.outputTokens.toLocaleString()} out` : '', note: perf.writer === 'on' ? (perf.write && !perf.write.cached ? `${perf.write.calls} parallel calls` : '') : perf.writer === 'skipped' ? `skipped by jev · ${Math.round((perf.needsWords ?? 0) * 100)}% chance words were needed` : `luna ${perf.writer}` },
     ...(perf.write?.arrange ? [{ stage: 'arrange', model: 'jev', s: { ms: perf.write.arrange.ms, usd: perf.write.arrange.usd }, tokens: `${perf.write.arrange.inputTokens.toLocaleString()} in`, note: `${perf.write.arrange.questions} questions · runs beside luna` }] : []),
     { stage: 'review', model: perf.review?.model ?? 'jev', s: perf.review, tokens: perf.review ? `${perf.review.inputTokens.toLocaleString()} in` : '', note: perf.review ? `${perf.review.questions} questions` : '' },
   ]

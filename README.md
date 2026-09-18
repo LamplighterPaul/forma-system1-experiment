@@ -37,6 +37,11 @@ them**: one typed question per box ("which box is this a sub-topic of?"), answer
 so "add a fuel tank to the fuel system" lands where it was asked. Code validates the graph and lays it out. A brief that is only a diagram ("a mind map of…", "org chart for…") gets a
 full-canvas diagram layout.
 
+**Jev routes the work.** The same call that designs the page also answers "does this turn need new words at
+all?". "Make it dark" does not, so Luna is never called and the turn takes about a second. When a turn only
+brings in a new section, Luna writes that section alone and the rest stays word for word. Code keeps the veto:
+any section without text means the writer runs, whatever Jev thinks.
+
 **Guardrails are System One questions too.** Every call asks Jev whether the brief is a design request at all
 and whether it is something that should not be built (abuse, defamation, instruction override). Code holds the
 thresholds and the refusal wording; Luna is never called for a refused brief.

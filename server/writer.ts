@@ -90,22 +90,28 @@ function chunks(spec: Spec, ids: string[]): string[][] {
 export type Part = { type: 'globals'; name: string; headline: string; sub: string; cta: string; links: DesignText['links'] } | { type: 'blocks'; blocks: Record<string, BlockText> }
 
 /** Writes a design's text in parallel calls. `onPart` fires as each piece lands, headline first in practice. */
-export async function write(spec: Spec, previous: DesignText | null | undefined, onPart: (part: Part) => void): Promise<WriteRun> {
+/** `only` limits the work to those sections (the rest of `previous` is kept untouched): used when a turn adds a section but changes no wording. */
+export async function write(spec: Spec, previous: DesignText | null | undefined, onPart: (part: Part) => void, only?: string[]): Promise<WriteRun> {
   if (!KEY) throw new Error('No writer key configured')
   const started = performance.now()
   const signal = AbortSignal.timeout(40_000)
-  const ids = spec.blocks.map(b => b.id).filter(id => id in SLOTS)
+  const partial = Boolean(only?.length && previous)
+  const ids = spec.blocks.map(b => b.id).filter(id => id in SLOTS && (!partial || only!.includes(id)))
   const links = extractLinks(spec.brief)
-  const named = spec.copy.name !== 'Acme'
+  const named = partial || spec.copy.name !== 'Acme'
   const context = [
     { role: 'user', content: `BRIEF AND REVISIONS\n${spec.brief}` },
     { role: 'user', content: `DESIGN (decided already): a ${spec.layout.replaceAll('_', ' ')}, ${spec.theme.accent} accent, ${spec.theme.font} type, ${spec.theme.dark ? 'dark' : 'light'}. Sections in order: ${spec.blocks.map(b => BLOCK_BY_ID[b.id]?.title ?? b.id).join(', ')}.` },
   ]
+  // Earlier revisions are already reflected in the previous text. Without saying so, "make the headline punchier"
+  // would be applied again on every later turn and the copy would never settle.
+  const revisions = [...spec.brief.matchAll(/^Revision \d+: (.*)$/gm)].map(m => m[1])
+  if (previous && revisions.length) context.push({ role: 'user', content: `PREVIOUS TEXT already reflects every revision except the last. The only new instruction is: "${revisions.at(-1)}". Apply it where it concerns the words; keep everything else word for word.` })
   const usage: Usage = { inputTokens: 0, outputTokens: 0 }
   let model = MODEL
-  const text: DesignText = { name: spec.copy.name, headline: spec.copy.headline, sub: spec.copy.sub, cta: spec.copy.cta, blocks: {}, links: labelled(links, []) }
+  const text: DesignText = partial ? { ...previous!, blocks: { ...previous!.blocks } } : { name: spec.copy.name, headline: spec.copy.headline, sub: spec.copy.sub, cta: spec.copy.cta, blocks: {}, links: labelled(links, []) }
 
-  const globals = call('design_globals', GLOBALS_SCHEMA, [...context,
+  const globals = partial ? Promise.resolve() : call('design_globals', GLOBALS_SCHEMA, [...context,
     { role: 'user', content: `Write the name, headline, sub and cta.\nLINKS TO LABEL (index: address)\n${links.length ? links.map((u, i) => `${i}: ${u}`).join('\n') : 'none: return an empty links array'}` },
     ...(previous ? [{ role: 'user', content: `PREVIOUS TEXT (keep unless a revision changes it)\n${JSON.stringify({ name: previous.name, headline: previous.headline, sub: previous.sub, cta: previous.cta })}` }] : []),
   ], signal).then(r => {
@@ -119,7 +125,7 @@ export async function write(spec: Spec, previous: DesignText | null | undefined,
   // One slow call must not hold the page hostage: a section chunk that misses the deadline keeps its pre-written copy.
   const deadline = () => AbortSignal.any([signal, AbortSignal.timeout(Number(process.env.WRITER_CHUNK_MS ?? 6500))])
   const sections = chunks(spec, ids).map(group => call('design_sections', BLOCKS_SCHEMA, [...context,
-    { role: 'user', content: `${named ? `The name is "${spec.copy.name}". Use only that name.` : 'The brief gives no name: do not mention a product or company name in these sections.'}\nWrite these sections and no others:\n\n${group.map(id => guidance(spec, id)).join('\n\n')}` },
+    { role: 'user', content: `${named ? `The name is "${partial ? previous!.name : spec.copy.name}". Use only that name.` : 'The brief gives no name: do not mention a product or company name in these sections.'}\nWrite these sections and no others:\n\n${group.map(id => guidance(spec, id)).join('\n\n')}` },
     ...(previous && group.some(id => previous.blocks[id]) ? [{ role: 'user', content: `PREVIOUS TEXT (keep unless a revision changes it)\n${JSON.stringify(Object.fromEntries(group.filter(id => previous.blocks[id]).map(id => [id, previous.blocks[id]])))}` }] : []),
   ], deadline()).then(r => {
     usage.inputTokens += r.usage.inputTokens; usage.outputTokens += r.usage.outputTokens
@@ -131,9 +137,9 @@ export async function write(spec: Spec, previous: DesignText | null | undefined,
   // A failed chunk leaves its sections on pre-written copy; only a total failure is an error.
   const settled = await Promise.allSettled([globals, ...sections])
   const failures = settled.filter(r => r.status === 'rejected') as PromiseRejectedResult[]
-  if (failures.length === settled.length) throw failures[0].reason
+  if (failures.length && failures.length === settled.length) throw failures[0].reason
   for (const f of failures) console.error('writer chunk skipped:', f.reason instanceof Error ? f.reason.name : f.reason)
-  return { text, model, ms: Math.round(performance.now() - started), calls: settled.length, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
+  return { text, model, ms: Math.round(performance.now() - started), calls: settled.length - (partial ? 1 : 0), inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
     usd: usage.inputTokens * WRITER_USD.input + usage.outputTokens * WRITER_USD.output }
 }
 
