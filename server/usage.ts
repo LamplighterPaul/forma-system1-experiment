@@ -69,9 +69,12 @@ function persist() {
 setInterval(persist, 10_000).unref()
 for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => { dirty = true; persist(); process.exit(0) })
 
+/** The anonymous name of a visitor for today: a salted hash that changes every day. */
+export const visitor = (ip: string) => createHash('sha256').update(day().salt + ip).digest('hex').slice(0, 16)
+
 export function seen(ip: string, session: string | undefined) {
   const d = day()
-  const who = createHash('sha256').update(d.salt + ip).digest('hex').slice(0, 16)
+  const who = visitor(ip)
   if (!d.visitors.includes(who) && d.visitors.length < MAX_TRACKED) d.visitors.push(who)
   const tab = session?.replace(/[^a-z0-9]/gi, '').slice(0, 24)
   if (tab && !d.sessions.includes(tab) && d.sessions.length < MAX_TRACKED) d.sessions.push(tab)

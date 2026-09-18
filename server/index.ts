@@ -8,6 +8,7 @@ import { BLOCKS, BLOCK_BY_ID, LAYOUTS } from '../shared/catalog.ts'
 import { assemble, buildQuestions, buildReview, conversation, outline, readReview, MAX_BRIEF, MAX_MESSAGE, MAX_MESSAGES, GUARD_DESIGN, GUARD_UNSAFE, REMIX_INTENT, USD_PER_TOKEN, type Pins, type Previous, type RunStats, type Spec } from '../shared/harness.ts'
 import { timingSafeEqual } from 'node:crypto'
 import { decide, deciderName, type Run } from './decider.ts'
+import * as events from './events.ts'
 import * as usage from './usage.ts'
 import { write, writerName, type WriteRun } from './writer.ts'
 import type { DesignText } from '../shared/text.ts'
@@ -19,8 +20,12 @@ const PER_MINUTE = 40, PER_DAY = 1500, GLOBAL_PER_DAY = 60_000
 const hits = new Map<string, { minute: number; m: number; day: number; d: number }>()
 let globalDay = 0, globalCount = 0
 
+const ipOf = (c: Context) => c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for')?.split(',')[0].trim() ?? 'local'
+/** Who is asking, anonymously, for the operator's live feed. */
+const whoIs = (c: Context) => ({ who: usage.visitor(ipOf(c)).slice(0, 6), tab: (c.req.header('x-forma-session') ?? '').replace(/[^a-z0-9]/gi, '').slice(0, 4), country: (c.req.header('cf-ipcountry') ?? '').slice(0, 2) })
+
 function allow(c: Context): boolean {
-  const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for')?.split(',')[0].trim() ?? 'local'
+  const ip = ipOf(c)
   usage.seen(ip, c.req.header('x-forma-session'))
   const now = Date.now(), minute = Math.floor(now / 60_000), day = Math.floor(now / 86_400_000)
   if (day !== globalDay) { globalDay = day; globalCount = 0; hits.clear() }
@@ -74,6 +79,16 @@ app.get('/api/stats', c => {
   return ok ? c.json(usage.report()) : c.json({ error: 'Not found' }, 404)
 })
 
+// The private live feed: `?since=<id>` returns only newer events, so a watcher can poll cheaply.
+app.get('/api/events', c => {
+  const token = process.env.STATS_TOKEN ?? ''
+  const given = (c.req.header('authorization') ?? '').replace(/^Bearer /, '')
+  const ok = token.length >= 16 && given.length === token.length && timingSafeEqual(Buffer.from(given), Buffer.from(token))
+  if (!ok) return c.json({ error: 'Not found' }, 404)
+  const since = Number(c.req.query('since')) || undefined
+  return c.json({ events: events.feed(since), today: usage.report().today, dailyUsdCap: usage.DAILY_USD_CAP })
+})
+
 app.get('/api/catalog', c => c.json({
   decider: deciderName(),
   writer: writerName(),
@@ -105,6 +120,7 @@ app.post('/api/design', async c => {
   if (blocked) return blocked
 
   try {
+    const asked = messages.at(-1), turns = messages.length
     let { text, run, cached } = await fanOut(messages)
     // Jev routes intent: "try something else" explores the previous thread instead of changing it.
     const intent = run.answers[REMIX_INTENT]
@@ -116,6 +132,8 @@ app.post('/api/design', async c => {
     const refusal = guard.unsafe >= UNSAFE_AT ? 'unsafe' : guard.design <= NOT_DESIGN_AT ? 'not_design' : null
     if (refusal && process.env.GUARD !== 'off') {
       usage.spent('design', stats); usage.refused()
+      events.record({ ...whoIs(c), kind: 'refused', text: messages.at(-1), turn: messages.length, ms: stats.ms, usd: stats.usd, cached,
+        note: refusal === 'unsafe' ? `unsafe ${Math.round(guard.unsafe * 100)}%` : `not a design ${Math.round(guard.design * 100)}%` })
       return c.json({ refused: refusal, guard, stats })
     }
     if (remix >= 0.5) {
@@ -129,9 +147,12 @@ app.post('/api/design', async c => {
     const prev = remix >= 0.5 || body.remix === true ? cleanPrevious(body.prev, true) : cleanPrevious(body.prev, false)
     const { spec, decisions } = assemble(text, run.answers, pins, seed, prev)
     usage.spent('design', stats)
+    events.record({ ...whoIs(c), kind: 'design', text: asked, turn: turns, ms: stats.ms, usd: stats.usd, cached,
+      note: `${remix >= 0.5 || body.remix === true ? 'remix · ' : ''}${spec.layout.replaceAll('_', ' ')} · ${spec.blocks.length} blocks · ${spec.theme.accent}${spec.theme.dark ? ' dark' : ''}` })
     return c.json({ spec, decisions, stats, seed, remix: remix >= 0.5 ? remix : 0, guard })
   } catch (e) {
     usage.failed()
+    events.record({ ...whoIs(c), kind: 'error', note: `design: ${e instanceof Error ? e.message.slice(0, 120) : 'failed'}`, ms: 0, usd: 0 })
     console.error('design failed', e)
     return c.json({ error: e instanceof Error ? e.message : 'Decider failed' }, 502)
   }
@@ -157,6 +178,8 @@ app.post('/api/review', async c => {
     const run = hit ?? remember(key, await decide(state, buildReview(spec)))
     const stats: RunStats = { decider: run.decider, model: run.model, ms: hit ? 0 : run.ms, questions: run.questions, inputTokens: hit ? 0 : run.inputTokens, usd: hit ? 0 : run.inputTokens * USD_PER_TOKEN, cached: Boolean(hit) }
     usage.spent('review', stats)
+    const verdict = readReview(spec, run.answers)
+    events.record({ ...whoIs(c), kind: 'review', ms: stats.ms, usd: stats.usd, cached: stats.cached, note: `fit ${verdict.fit.toFixed(1)}/3${verdict.missing >= 0.5 ? ` · catalog gap ${Math.round(verdict.missing * 100)}%` : ''}` })
     return c.json({ review: readReview(spec, run.answers), stats })
   } catch (e) {
     usage.failed()
@@ -179,6 +202,7 @@ app.post('/api/write', async c => {
   c.header('Content-Type', 'application/x-ndjson; charset=utf-8')
   c.header('Cache-Control', 'no-store')
   c.header('X-Accel-Buffering', 'no')
+  const who = whoIs(c)
   return stream(c, async out => {
     const send = (line: unknown) => out.write(`${JSON.stringify(line)}\n`)
     if (!available) { await send({ type: 'done', text: null, writer: 'none' }); return }
@@ -186,10 +210,12 @@ app.post('/api/write', async c => {
       const hit = cache.get(key) as WriteRun | undefined
       const run = hit ?? remember(key, await write(spec, previous, part => { void send(part) }))
       if (!hit) usage.wrote(run)
+      events.record({ ...who, kind: 'write', ms: hit ? 0 : run.ms, usd: hit ? 0 : run.usd, cached: Boolean(hit), note: `luna · ${run.calls} calls · ${run.inputTokens}→${run.outputTokens} tok · “${run.text.headline}”` })
       await send({ type: 'done', writer: 'luna', text: run.text,
         stats: { model: run.model, calls: hit ? 0 : run.calls, ms: hit ? 0 : run.ms, inputTokens: hit ? 0 : run.inputTokens, outputTokens: hit ? 0 : run.outputTokens, usd: hit ? 0 : run.usd, cached: Boolean(hit) } })
     } catch (e) {
       usage.failed()
+      events.record({ ...who, kind: 'error', note: `luna: ${e instanceof Error ? e.message.slice(0, 120) : 'failed'}`, ms: 0, usd: 0 })
       console.error('write failed', e)
       await send({ type: 'error', error: e instanceof Error ? e.message : 'Writer failed' })
     }

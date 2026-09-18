@@ -98,7 +98,11 @@ by a random id per browser tab. Set `STATS_TOKEN` (16+ characters) to enable the
 curl -H "Authorization: Bearer $STATS_TOKEN" https://your-host/api/stats
 ```
 
-Mount a volume at `/data` to keep the counters across deploys.
+The same token opens `GET /api/events`, a live feed of requests for whoever runs the site: the latest message
+of each thread, what was built and what it cost. Visitors are anonymous there too, and the page tells them
+that briefs are logged. Set `EVENT_LOG=off` to disable it.
+
+Mount a volume at `/data` to keep the counters and the feed across deploys.
 To deploy with [Kamal](https://kamal-deploy.org), copy `config/deploy.example.yml` to
 `config/deploy.yml`.
 

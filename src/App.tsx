@@ -243,6 +243,7 @@ export default function App() {
                 <p className="text-foreground">An experiment: how fast and cheap can design get?</p>
                 <p><span className="text-foreground">Jev</span>, a small decision model, picks the design. <span className="text-foreground">Luna</span>, a traditional LLM, only writes the words. Switch Luna off to see Jev alone.</p>
                 <p>Describe a page, a screen, a form or a diagram. Press enter.</p>
+                <p className="text-xs">Briefs are logged anonymously for the experiment. Don’t type anything private.</p>
                 <div>
                   {EXAMPLES.map((e, i) => <button key={e} type="button" onClick={() => send(e).catch(() => {})} className="block w-full cursor-pointer truncate py-0.5 text-left hover:text-white">{i + 1}. {e}</button>)}
                 </div>
