@@ -158,6 +158,8 @@ const PAGE_ORDER = ['banner', 'navbar', 'sidebar', 'hero', 'logos', 'about', 'fe
 
 /** What the previous turn picked, by decision id. Used for stickiness so a revision only changes what it is about. */
 export type Previous = Record<string, string>
+const MAX_OPTIONAL_PAGE = 8  // optional sections on a marketing page, beyond navbar, hero and footer
+const MAX_OPTIONAL_APP = 6
 const KEEP_BLOCK = 0.2    // a block already on the canvas stays unless Jev drops below this
 const KEEP_CHOICE = 0.25  // a previous choice stays while it is within this distance of Jev's new top answer
 
@@ -245,6 +247,12 @@ export function assemble(brief: string, answers: Answers, pins: Pins = {}, seed 
     chosen = candidates.filter(c => c.yes || extra.includes(c))
   }
 
+  // A bigger catalog means more plausible blocks. A page is better for being edited: keep the most probable, drop the rest.
+  const optional = chosen.filter(c => !c.always).sort((x, y) => y.p - x.p)
+  const limit = layout === 'marketing_page' ? MAX_OPTIONAL_PAGE : MAX_OPTIONAL_APP
+  const pinnedOn = (id: string) => pins[q.block(id)] === true
+  const dropped = new Set(optional.slice(limit).filter(c => !pinnedOn(c.b.id)).map(c => c.b.id))
+  chosen = chosen.filter(c => !dropped.has(c.b.id))
   chosen.sort((x, y) => PAGE_ORDER.indexOf(x.b.id) - PAGE_ORDER.indexOf(y.b.id))
   const blocks: SpecBlock[] = chosen.map(({ b, p }) => {
     const props: SpecBlock['props'] = {}

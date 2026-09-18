@@ -36,8 +36,19 @@ try { days = JSON.parse(readFileSync(FILE, 'utf8')) } catch { /* first run, or n
 const today = () => new Date().toISOString().slice(0, 10)
 const blank = (): Day => ({ salt: randomBytes(16).toString('hex'), visitors: [], sessions: [], designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, usd: 0, writes: 0, writeTokensIn: 0, writeTokensOut: 0, writeUsd: 0, limited: 0, errors: 0 })
 
+// Records written by an older version lack newer counters; adding to a missing field would poison the sums with NaN.
+function normalise(d: Day): Day {
+  const zero = blank()
+  for (const k of Object.keys(zero) as (keyof Day)[]) {
+    const v = d[k]
+    if (typeof zero[k] === 'number' && !(typeof v === 'number' && Number.isFinite(v))) (d as unknown as Record<string, unknown>)[k] = 0
+  }
+  return d
+}
+
 function day(): Day {
   const key = today()
+  if (days[key]) normalise(days[key])
   if (!days[key]) {
     days[key] = blank()
     for (const old of Object.keys(days).sort().slice(0, -KEEP_DAYS)) delete days[old]
@@ -87,6 +98,7 @@ export const failed = () => { day().errors++; dirty = true }
 export const overBudget = () => total(day()) >= DAILY_USD_CAP
 
 export function report() {
+  for (const d of Object.values(days)) normalise(d)
   const rows = Object.entries(days).sort(([a], [b]) => b.localeCompare(a)).map(([date, d]) => ({
     date, people: d.visitors.length, sessions: d.sessions.length, designs: d.designs, jevCalls: d.jevCalls,
     cachedAnswers: d.cachedAnswers, reviews: d.reviews, tokens: d.tokens, jevUsd: Number(d.usd.toFixed(4)),

@@ -116,10 +116,12 @@ export async function write(spec: Spec, previous: DesignText | null | undefined,
     onPart({ type: 'globals', name: text.name, headline: text.headline, sub: text.sub, cta: text.cta, links: text.links })
   })
 
+  // One slow call must not hold the page hostage: a section chunk that misses the deadline keeps its pre-written copy.
+  const deadline = () => AbortSignal.any([signal, AbortSignal.timeout(Number(process.env.WRITER_CHUNK_MS ?? 6500))])
   const sections = chunks(spec, ids).map(group => call('design_sections', BLOCKS_SCHEMA, [...context,
     { role: 'user', content: `${named ? `The name is "${spec.copy.name}". Use only that name.` : 'The brief gives no name: do not mention a product or company name in these sections.'}\nWrite these sections and no others:\n\n${group.map(id => guidance(spec, id)).join('\n\n')}` },
     ...(previous && group.some(id => previous.blocks[id]) ? [{ role: 'user', content: `PREVIOUS TEXT (keep unless a revision changes it)\n${JSON.stringify(Object.fromEntries(group.filter(id => previous.blocks[id]).map(id => [id, previous.blocks[id]])))}` }] : []),
-  ], signal).then(r => {
+  ], deadline()).then(r => {
     usage.inputTokens += r.usage.inputTokens; usage.outputTokens += r.usage.outputTokens
     const written = sanitizeBlocks(Array.isArray(r.data.blocks) ? (r.data.blocks as Record<string, unknown>[]) : [], spec, group)
     Object.assign(text.blocks, written)
@@ -130,7 +132,7 @@ export async function write(spec: Spec, previous: DesignText | null | undefined,
   const settled = await Promise.allSettled([globals, ...sections])
   const failures = settled.filter(r => r.status === 'rejected') as PromiseRejectedResult[]
   if (failures.length === settled.length) throw failures[0].reason
-  for (const f of failures) console.error('writer chunk failed', f.reason)
+  for (const f of failures) console.error('writer chunk skipped:', f.reason instanceof Error ? f.reason.name : f.reason)
   return { text, model, ms: Math.round(performance.now() - started), calls: settled.length, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
     usd: usage.inputTokens * WRITER_USD.input + usage.outputTokens * WRITER_USD.output }
 }
