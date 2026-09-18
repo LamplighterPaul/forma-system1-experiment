@@ -9,7 +9,7 @@ import type { BlockProps } from './types'
 type Shape = 'pipeline' | 'tree' | 'hub' | 'cycle'
 type Side = 'l' | 'r' | 't' | 'b'
 const SIDES: Record<Side, Position> = { l: Position.Left, r: Position.Right, t: Position.Top, b: Position.Bottom }
-const W = 200, H = 72
+const W = 190, H = 68
 
 // Pre-written graphs, used when Luna is off. Boxes point TO the numbers in the last column.
 const SAMPLES: Record<Shape, [string, string, string][]> = {
@@ -43,14 +43,31 @@ function ranks(g: Graph): number[] {
 
 function place(g: Graph, shape: Shape): { x: number; y: number }[] {
   const n = g.nodes.length
-  if (shape === 'hub' || shape === 'cycle') {
-    const ring = shape === 'hub' ? n - 1 : n, rx = Math.max(300, ring * 52), ry = Math.max(190, ring * 34)
-    return g.nodes.map((_, i) => {
-      if (shape === 'hub' && i === 0) return { x: 0, y: 0 }
-      const k = shape === 'hub' ? i - 1 : i
-      const angle = (2 * Math.PI * k) / ring - Math.PI / 2
-      return { x: Math.cos(angle) * rx, y: Math.sin(angle) * ry }
-    })
+  if (shape === 'cycle') {
+    const rx = Math.max(300, n * 52), ry = Math.max(190, n * 34)
+    return g.nodes.map((_, i) => { const a = (2 * Math.PI * i) / n - Math.PI / 2; return { x: Math.cos(a) * rx, y: Math.sin(a) * ry } })
+  }
+  if (shape === 'hub') {
+    // A radial tree: the centre, its branches on an inner ring, their sub-topics further out in the same direction.
+    // Each branch gets a slice of the circle in proportion to how many leaves hang from it.
+    const kids = g.nodes.map(() => [] as number[]), seen = new Set([0]), queue = [0]
+    while (queue.length) { const at = queue.shift()!; for (const [a, b] of g.edges) { const next = a === at ? b : b === at ? a : -1; if (next > 0 && !seen.has(next)) { seen.add(next); kids[at].push(next); queue.push(next) } } }
+    g.nodes.forEach((_, i) => { if (!seen.has(i)) { seen.add(i); kids[0].push(i) } })
+    const leaves = (i: number): number => (kids[i].length ? kids[i].reduce((sum, k) => sum + leaves(k), 0) : 1)
+    const at: { x: number; y: number }[] = g.nodes.map(() => ({ x: 0, y: 0 }))
+    const spread = (i: number, from: number, to: number, depth: number) => {
+      let cursor = from
+      for (const k of kids[i]) {
+        const share = ((to - from) * leaves(k)) / leaves(i), mid = cursor + share / 2
+        // Rings tighten as they go out, so a second level does not shrink the whole map.
+        const rx = [0, 265, 490, 680][Math.min(depth, 3)], ry = [0, 160, 300, 420][Math.min(depth, 3)]
+        at[k] = { x: Math.cos(mid) * rx, y: Math.sin(mid) * ry }
+        spread(k, cursor, cursor + share, depth + 1)
+        cursor += share
+      }
+    }
+    spread(0, -Math.PI / 2, 1.5 * Math.PI, 1)
+    return at
   }
   const rank = ranks(g)
   const rows = new Map<number, number[]>()
@@ -76,8 +93,7 @@ function place(g: Graph, shape: Shape): { x: number; y: number }[] {
 
 function build(items: TextItem[], shape: Shape): { nodes: Node[]; edges: Edge[] } {
   const g = graphOf(items)
-  // A mind map radiates from its centre and a cycle closes on itself, whatever connections the writer gave.
-  if (shape === 'hub') g.edges = g.nodes.slice(1).map((_, i) => [0, i + 1])
+  // A cycle closes on itself whatever connections were given. A mind map keeps its hierarchy: branches and sub-topics.
   if (shape === 'cycle') g.edges = g.nodes.map((_, i) => [i, (i + 1) % g.nodes.length])
   const at = place(g, shape)
   const nodes: Node[] = g.nodes.map((node, i) => ({ id: `n${i}`, type: 'box', position: { x: at[i].x - W / 2, y: at[i].y - H / 2 }, width: W, height: H,
@@ -99,9 +115,9 @@ export function Flow({ spec, props, text }: BlockProps) {
 
   const diagram = (
     // `key` remounts the diagram when the graph changes, so it is fitted to view again.
-    <div className={`w-full overflow-hidden rounded-xl border bg-muted/30 ${whole ? 'h-[620px]' : 'h-[440px]'}`}>
+    <div className={`w-full overflow-hidden rounded-xl border bg-muted/30 ${whole ? 'h-[680px]' : 'h-[460px]'}`}>
       <ReactFlow key={`${shape}:${items.map(i => `${i.title}>${i.meta}`).join('|')}`} defaultNodes={nodes} defaultEdges={edges} nodeTypes={nodeTypes}
-        fitView fitViewOptions={{ padding: whole ? 0.24 : 0.14, maxZoom: 1.15 }} minZoom={0.35} maxZoom={1.6} colorMode={spec.theme.dark ? 'dark' : 'light'} proOptions={{ hideAttribution: true }}
+        fitView fitViewOptions={{ padding: whole ? 0.16 : 0.12, maxZoom: 1.15 }} minZoom={0.35} maxZoom={1.6} colorMode={spec.theme.dark ? 'dark' : 'light'} proOptions={{ hideAttribution: true }}
         nodesConnectable={false} elementsSelectable={false} zoomOnScroll={false} preventScrolling={false} zoomOnDoubleClick>
         <Background gap={20} size={1} color="var(--border)" />
         <Controls showInteractive={false} position="bottom-left" />

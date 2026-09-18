@@ -3,7 +3,7 @@ import { MAX_MESSAGE, type Pins, type Previous } from '@shared/harness'
 import type { DesignText } from '@shared/text'
 import { capabilities, design as requestDesign, review, write, type DesignResult, type ReviewResult } from './api'
 import { Canvas } from './Canvas'
-import { describeChanges, load, messagesOf, newDesign, newTurn, save, titleOf, type Design, type Turn } from './designs'
+import { describeChanges, describeTextChanges, load, messagesOf, newDesign, newTurn, save, titleOf, type Design, type Turn } from './designs'
 import { DecisionsPanel, PerformancePanel, totals, type Perf } from './Panels'
 
 const EXAMPLES = [
@@ -128,6 +128,9 @@ export default function App() {
           if (w.writer === 'none') { setLunaAvailable(false); round.writer = 'unavailable' }
           words = w.text; round.write = w.stats
           setText(words); setPerf({ ...round })
+          // Luna's edits are changes too: a new box, a moved box, a rewritten headline.
+          const wrote = words ? describeTextChanges(beforeText, words) : []
+          if (wrote.length) setTurn(t => ({ ...t, changes: [...(t.changes ?? []).filter(c => c !== 'no visible change'), ...wrote] }))
         } catch (e) {
           if (ctl.signal.aborted) throw e
           setTurn(t => ({ ...t, error: `Luna: ${e instanceof Error ? e.message : 'failed'}. Showing pre-written copy.` }))
@@ -136,7 +139,7 @@ export default function App() {
 
       setStage('review')
       const reviewSpec = words ? { ...r.spec, copy: { name: words.name, headline: words.headline, sub: words.sub, cta: words.cta } } : r.spec
-      await review(reviewSpec, ctl.signal).then(v => { round.review = v.stats; setReviewed(v); setPerf({ ...round }) }).catch(() => {})
+      await review(reviewSpec, (words?.blocks.flow?.items ?? []).map(i => i.title), ctl.signal).then(v => { round.review = v.stats; setReviewed(v); setPerf({ ...round }) }).catch(() => {})
       const t = totals(round)
       setSession(s => ({ rounds: s.rounds + 1, usd: s.usd + t.usd, jevUsd: s.jevUsd + (round.decide?.usd ?? 0) + (round.review?.usd ?? 0), lunaUsd: s.lunaUsd + (round.write?.usd ?? 0) }))
       return r
@@ -297,7 +300,7 @@ export default function App() {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
               {!shown ? <p className="text-muted-foreground">Jev’s decisions and what each round cost appear here.</p>
-                : panel === 'decisions' ? <DecisionsPanel result={shown} reviewed={reviewed} pins={current.pins} onPin={onPin} /> : <PerformancePanel perf={perf} session={session} />}
+                : panel === 'decisions' ? <DecisionsPanel result={shown} reviewed={reviewed} pins={current.pins} onPin={onPin} structure={text?.structure} /> : <PerformancePanel perf={perf} session={session} />}
             </div>
           </aside>
         ) : null}

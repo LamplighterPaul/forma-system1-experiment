@@ -81,9 +81,9 @@ export function seen(ip: string, session: string | undefined) {
   dirty = true
 }
 
-export function spent(kind: 'design' | 'review', run: { cached: boolean; inputTokens: number; usd: number }) {
+export function spent(kind: 'design' | 'review' | 'arrange', run: { cached: boolean; inputTokens: number; usd: number }) {
   const d = day()
-  if (kind === 'design') d.designs++; else d.reviews++
+  if (kind === 'design') d.designs++; else if (kind === 'review') d.reviews++
   if (run.cached) d.cachedAnswers++
   else { d.jevCalls++; d.tokens += run.inputTokens; d.usd += run.usd }
   dirty = true

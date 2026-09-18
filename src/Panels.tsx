@@ -1,5 +1,6 @@
 // The two side panels of the shell: every decision Jev made, and what the round cost.
 import type { Pins, RunStats } from '@shared/harness'
+import type { Placement } from '@shared/text'
 import type { DesignResult, ReviewResult, WriteStats } from './api'
 import { ReviewCard, Trace } from './Trace'
 
@@ -9,15 +10,16 @@ const ms = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(2)} s` : `${n} ms`)
 export interface Perf { decide?: RunStats; write?: WriteStats; review?: RunStats; writer: 'on' | 'off' | 'unavailable' }
 
 export function totals(p: Perf) {
-  const stages = [p.decide, p.write, p.review].filter(Boolean) as { ms: number; usd: number }[]
+  const stages = [p.decide, p.write, p.write?.arrange, p.review].filter(Boolean) as { ms: number; usd: number }[]
   return { ms: stages.reduce((n, s) => n + s.ms, 0), usd: stages.reduce((n, s) => n + s.usd, 0), calls: stages.filter(s => s.ms > 0).length }
 }
 
 export function PerformancePanel({ perf, session }: { perf: Perf; session: { rounds: number; usd: number; jevUsd: number; lunaUsd: number } }) {
   const t = totals(perf)
-  const rows = [
+  const rows: { stage: string; model: string; s?: { ms: number; usd: number; cached?: boolean }; tokens: string; note: string }[] = [
     { stage: 'decide', model: perf.decide?.model ?? 'jev', s: perf.decide, tokens: perf.decide ? `${perf.decide.inputTokens.toLocaleString()} in` : '', note: perf.decide ? `${perf.decide.questions} questions` : '' },
     { stage: 'write', model: perf.write?.model ?? 'luna', s: perf.write, tokens: perf.write ? `${perf.write.inputTokens.toLocaleString()} in · ${perf.write.outputTokens.toLocaleString()} out` : '', note: perf.writer === 'on' ? (perf.write && !perf.write.cached ? `${perf.write.calls} parallel calls` : '') : `luna ${perf.writer}` },
+    ...(perf.write?.arrange ? [{ stage: 'arrange', model: 'jev', s: { ms: perf.write.arrange.ms, usd: perf.write.arrange.usd }, tokens: `${perf.write.arrange.inputTokens.toLocaleString()} in`, note: `${perf.write.arrange.questions} questions · runs beside luna` }] : []),
     { stage: 'review', model: perf.review?.model ?? 'jev', s: perf.review, tokens: perf.review ? `${perf.review.inputTokens.toLocaleString()} in` : '', note: perf.review ? `${perf.review.questions} questions` : '' },
   ]
   return (
@@ -42,9 +44,9 @@ export function PerformancePanel({ perf, session }: { perf: Perf; session: { rou
       <div>
         <p className="mb-1.5 text-muted-foreground">where the time went</p>
         <div className="flex h-3 w-full overflow-hidden border">
-          {rows.map((r, i) => r.s?.ms ? <div key={r.stage} title={`${r.stage} ${ms(r.s.ms)}`} style={{ width: `${(100 * r.s.ms) / Math.max(1, t.ms)}%` }} className={['bg-foreground', 'bg-primary', 'bg-foreground/40'][i]} /> : null)}
+          {rows.map(r => r.s?.ms ? <div key={r.stage} title={`${r.stage} ${ms(r.s.ms)}`} style={{ width: `${(100 * r.s.ms) / Math.max(1, t.ms)}%` }} className={r.stage === 'write' ? 'bg-primary' : r.stage === 'decide' ? 'bg-foreground' : 'bg-foreground/40'} /> : null)}
         </div>
-        <p className="mt-1.5 flex gap-3 text-muted-foreground"><span><span className="text-foreground">■</span> jev decide</span><span><span className="text-primary">■</span> luna write</span><span><span className="text-foreground/40">■</span> jev review</span></p>
+        <p className="mt-1.5 flex gap-3 text-muted-foreground"><span><span className="text-foreground">■</span> jev decide</span><span><span className="text-primary">■</span> luna write</span><span><span className="text-foreground/40">■</span> jev arrange, review</span></p>
       </div>
 
       <div className="border p-2.5">
@@ -57,12 +59,23 @@ export function PerformancePanel({ perf, session }: { perf: Perf; session: { rou
   )
 }
 
-export function DecisionsPanel({ result, reviewed, pins, onPin }: { result: DesignResult; reviewed: ReviewResult | null; pins: Pins; onPin: (id: string, value: string | boolean | null) => void }) {
+export function DecisionsPanel({ result, reviewed, pins, onPin, structure }: { result: DesignResult; reviewed: ReviewResult | null; pins: Pins; onPin: (id: string, value: string | boolean | null) => void; structure?: Placement[] }) {
   return (
     <div className="space-y-3">
       {result.stats.decider === 'mock' ? <p className="border p-2.5 text-xs">No Jev key on this server. A mock is answering.</p> : null}
       {reviewed ? <ReviewCard review={reviewed.review} /> : null}
       <p className="text-xs text-muted-foreground">{result.decisions.length} decisions, one call. Click a bar to overrule Jev.</p>
+      {structure?.length ? (
+        <details open className="border px-2.5">
+          <summary className="cursor-pointer py-1.5 text-xs text-white select-none">Diagram structure <span className="text-muted-foreground">· {structure.length} placements by Jev</span></summary>
+          <div className="space-y-1 border-t py-2 text-xs">
+            {structure.map(s => (
+              <p key={s.child} className="flex justify-between gap-2"><span className="min-w-0 truncate"><span className="text-white">{s.child}</span> <span className="text-muted-foreground">under</span> {s.parent}</span>
+                <span className="shrink-0 text-muted-foreground" title={s.runnerUp ? `runner-up: ${s.runnerUp}` : undefined}>{Math.round(s.p * 100)}%</span></p>
+            ))}
+          </div>
+        </details>
+      ) : null}
       <Trace decisions={result.decisions} pins={pins} onPin={onPin} />
     </div>
   )

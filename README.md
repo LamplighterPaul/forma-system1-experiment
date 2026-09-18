@@ -32,8 +32,9 @@ The performance panel shows each stage of a round (Jev decide, Luna write, Jev r
 and cost.
 
 **Diagrams** are drawn with [React Flow](https://reactflow.dev). Jev decides that a brief needs one and which
-shape it takes (pipeline, tree, hub or cycle); Luna names the boxes and says how they connect; code validates
-the graph and lays it out. A brief that is only a diagram ("a mind map of…", "org chart for…") gets a
+shape it takes (pipeline, tree, hub or cycle). Luna names the boxes. For mind maps and trees **Jev then arranges
+them**: one typed question per box ("which box is this a sub-topic of?"), answered in parallel in about 300 ms,
+so "add a fuel tank to the fuel system" lands where it was asked. Code validates the graph and lays it out. A brief that is only a diagram ("a mind map of…", "org chart for…") gets a
 full-canvas diagram layout.
 
 **Guardrails are System One questions too.** Every call asks Jev whether the brief is a design request at all

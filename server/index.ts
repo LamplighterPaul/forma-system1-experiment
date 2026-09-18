@@ -8,6 +8,7 @@ import { BLOCKS, BLOCK_BY_ID, LAYOUTS } from '../shared/catalog.ts'
 import { assemble, buildQuestions, buildReview, conversation, outline, readReview, MAX_BRIEF, MAX_MESSAGE, MAX_MESSAGES, GUARD_DESIGN, GUARD_UNSAFE, REMIX_INTENT, USD_PER_TOKEN, type Pins, type Previous, type RunStats, type Spec } from '../shared/harness.ts'
 import { timingSafeEqual } from 'node:crypto'
 import { decide, deciderName, type Run } from './decider.ts'
+import { arrange, type Arrangement } from './arrange.ts'
 import * as events from './events.ts'
 import * as usage from './usage.ts'
 import { write, writerName, type WriteRun } from './writer.ts'
@@ -167,12 +168,15 @@ function cleanSpec(v: unknown): Spec | null {
 }
 
 app.post('/api/review', async c => {
-  const spec = cleanSpec((await c.req.json().catch(() => ({}))).spec)
+  const body2 = await c.req.json().catch(() => ({}))
+  const spec = cleanSpec(body2.spec)
   if (!spec) return c.json({ error: 'Invalid spec' }, 400)
   const blocked = gate(c)
   if (blocked) return blocked
   try {
-    const state = outline(spec)
+    // A diagram's content is its boxes; without them the review can only judge that a diagram exists.
+    const boxes = Array.isArray(body2.boxes) ? (body2.boxes as unknown[]).filter(b => typeof b === 'string').slice(0, 16).map(b => String(b).slice(0, 60)) : []
+    const state = outline(spec, boxes)
     const key = `r:${JSON.stringify(state)}`
     const hit = cache.get(key) as Run | undefined
     const run = hit ?? remember(key, await decide(state, buildReview(spec)))
@@ -207,12 +211,29 @@ app.post('/api/write', async c => {
     const send = (line: unknown) => out.write(`${JSON.stringify(line)}\n`)
     if (!available) { await send({ type: 'done', text: null, writer: 'none' }); return }
     try {
-      const hit = cache.get(key) as WriteRun | undefined
-      const run = hit ?? remember(key, await write(spec, previous, part => { void send(part) }))
-      if (!hit) usage.wrote(run)
-      events.record({ ...who, kind: 'write', ms: hit ? 0 : run.ms, usd: hit ? 0 : run.usd, cached: Boolean(hit), note: `luna · ${run.calls} calls · ${run.inputTokens}→${run.outputTokens} tok · “${run.text.headline}”` })
+      const hit = cache.get(key) as (WriteRun & { arranged?: Arrangement }) | undefined
+      let run = hit
+      if (!run) {
+        // Luna names the boxes of a mind map or tree; Jev decides where each one hangs. It starts the moment the boxes land.
+        let arranging: Promise<Arrangement | null> = Promise.resolve(null)
+        const fresh = await write(spec, previous, part => {
+          if (part.type === 'blocks' && part.blocks.flow) arranging = arrange(spec, part.blocks.flow.items).catch(e => { console.error('arrange failed', e); return null })
+          void send(part)
+        })
+        const arranged = await arranging
+        if (arranged && fresh.text.blocks.flow) {
+          fresh.text.blocks.flow = { ...fresh.text.blocks.flow, items: arranged.items }
+          fresh.text.structure = arranged.structure
+          usage.spent('arrange', { cached: false, inputTokens: arranged.inputTokens, usd: arranged.usd })
+          await send({ type: 'blocks', blocks: { flow: fresh.text.blocks.flow } })
+        }
+        run = remember(key, { ...fresh, arranged: arranged ?? undefined })
+        usage.wrote(fresh)
+      }
+      const arrangeStats = run.arranged ? { ms: hit ? 0 : run.arranged.ms, questions: run.arranged.questions, inputTokens: hit ? 0 : run.arranged.inputTokens, usd: hit ? 0 : run.arranged.usd } : undefined
+      events.record({ ...who, kind: 'write', ms: hit ? 0 : run.ms, usd: hit ? 0 : run.usd, cached: Boolean(hit), note: `luna · ${run.calls} calls · ${run.inputTokens}→${run.outputTokens} tok · “${run.text.headline}”${run.arranged ? ` · jev arranged ${run.arranged.structure.length} boxes` : ''}` })
       await send({ type: 'done', writer: 'luna', text: run.text,
-        stats: { model: run.model, calls: hit ? 0 : run.calls, ms: hit ? 0 : run.ms, inputTokens: hit ? 0 : run.inputTokens, outputTokens: hit ? 0 : run.outputTokens, usd: hit ? 0 : run.usd, cached: Boolean(hit) } })
+        stats: { model: run.model, calls: hit ? 0 : run.calls, ms: hit ? 0 : run.ms, inputTokens: hit ? 0 : run.inputTokens, outputTokens: hit ? 0 : run.outputTokens, usd: hit ? 0 : run.usd, cached: Boolean(hit), arrange: arrangeStats } })
     } catch (e) {
       usage.failed()
       events.record({ ...who, kind: 'error', note: `luna: ${e instanceof Error ? e.message.slice(0, 120) : 'failed'}`, ms: 0, usd: 0 })

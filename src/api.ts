@@ -25,9 +25,9 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
 }
 
 export const design = (req: DesignRequest, signal?: AbortSignal) => post<DesignResult | Refusal>('/api/design', req, signal)
-export const review = (spec: Spec, signal?: AbortSignal) => post<ReviewResult>('/api/review', { spec }, signal)
+export const review = (spec: Spec, boxes: string[], signal?: AbortSignal) => post<ReviewResult>('/api/review', { spec, boxes }, signal)
 
-export interface WriteStats { model: string; calls: number; ms: number; inputTokens: number; outputTokens: number; usd: number; cached: boolean }
+export interface WriteStats { model: string; calls: number; ms: number; inputTokens: number; outputTokens: number; usd: number; cached: boolean; arrange?: { ms: number; questions: number; inputTokens: number; usd: number } }
 export interface WriteResult { text: DesignText | null; writer: 'luna' | 'none'; stats?: WriteStats }
 export type WritePart = { type: 'globals'; name: string; headline: string; sub: string; cta: string; links: DesignText['links'] } | { type: 'blocks'; blocks: DesignText['blocks'] }
 

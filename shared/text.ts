@@ -7,7 +7,10 @@ import type { Spec } from './harness.ts'
 export interface TextItem { title: string; body: string; meta: string }
 export interface BlockText { heading: string; sub: string; button: string; items: TextItem[] }
 export interface DesignLink { label: string; url: string }
+/** Where Jev placed each box of a diagram, with its confidence. */
+export interface Placement { child: string; parent: string; p: number; runnerUp?: string }
 export interface DesignText {
+  structure?: Placement[]
   name: string
   headline: string
   sub: string
@@ -41,8 +44,8 @@ export const SLOTS: Record<string, SlotGuide> = {
     items: { count: 'tiers', title: 'Plan name', body: 'Three or four included things, separated by semicolons', meta: 'Price such as $19' } },
   faq: { about: 'Frequently asked questions', heading: 'Section heading', items: { count: 'items', title: 'The question', body: 'A direct answer in one or two sentences' } },
   flow: { about: 'A diagram of connected boxes. You decide the boxes and how they connect, from what the brief describes. Be specific to the brief; use branches and merges where the real thing has them', heading: 'Diagram title', sub: 'One sentence explaining what the diagram shows',
-    items: { count: 10, min: 5, title: 'Box label, one to three words', body: 'A few words of detail, under 40 characters',
-      meta: 'The 1-based numbers of the boxes this box points TO, separated by commas, such as 2,3. Empty for an end box. For a mind map, box 1 is the centre and points to the others' } },
+    items: { count: 14, min: 5, title: 'Box label, one to three words. Every label must be different', body: 'A few words of detail, under 40 characters',
+      meta: 'The 1-based numbers of the boxes this box points TO, separated by commas, such as 2,3. Empty for an end box. For a mind map or hierarchy, box 1 is the top, main topics hang from it and sub-topics hang from their topic; include sub-topics where they help, and put a box exactly where a revision asks for it' } },
   locations: { about: 'Physical locations shown beside a map', heading: 'Section heading', sub: 'One friendly sentence',
     items: { count: 3, title: 'Place or branch name. Use places from the brief', body: 'Area or street, generic if the brief gives none', meta: 'Opening hours, short' } },
   form: { about: 'A form visitors fill in', heading: 'Form title', sub: 'One sentence on what happens next', button: 'Submit button label' },
@@ -94,11 +97,11 @@ export interface Graph { nodes: { label: string; detail: string }[]; edges: [num
 
 /** Turns the writer's boxes into a validated graph. Bad references, self-loops and duplicates are dropped; an unconnected list becomes a chain. */
 export function graphOf(items: TextItem[]): Graph {
-  const nodes = items.slice(0, 10).map(i => ({ label: i.title, detail: i.body }))
+  const nodes = items.slice(0, 14).map(i => ({ label: i.title, detail: i.body }))
   const seen = new Set<string>()
   const edges: [number, number][] = []
-  items.slice(0, 10).forEach((item, from) => {
-    for (const ref of item.meta.split(/[^0-9]+/).filter(Boolean).slice(0, 5)) {
+  items.slice(0, 14).forEach((item, from) => {
+    for (const ref of item.meta.split(/[^0-9]+/).filter(Boolean).slice(0, 8)) {
       const to = Number(ref) - 1
       const key = `${from}>${to}`
       if (to >= 0 && to < nodes.length && to !== from && !seen.has(key) && !seen.has(`${to}>${from}`)) { seen.add(key); edges.push([from, to]) }

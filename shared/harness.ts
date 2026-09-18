@@ -280,11 +280,12 @@ export function assemble(brief: string, answers: Answers, pins: Pins = {}, seed 
 
 export const FIT_LEVELS = ['Does not match the brief', 'Partly matches the brief', 'Matches the brief well', 'Matches the brief very closely']
 
-export function outline(spec: Spec) {
+export function outline(spec: Spec, boxes: string[] = []) {
   return {
     brief: spec.brief,
     design: {
       kind: spec.layout.replace('_', ' '), headline: spec.copy.headline, button: spec.copy.cta,
+      ...(boxes.length ? { diagram_boxes: boxes } : {}),
       accent_colour: spec.theme.accent, background_tone: spec.theme.base, theme: spec.theme.dark ? 'dark' : 'light',
       // Titles alone hide what a section contains (the review once missed a GitHub button it could not see).
       sections: spec.blocks.map(b => {
