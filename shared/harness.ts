@@ -3,7 +3,7 @@
 // assembles the answers into a spec. Jev only ever returns probabilities.
 
 import {
-  ACCENTS, BLOCKS, BLOCK_BY_ID, CTAS, DENSITY_LEVELS, FONTS, HEADLINES, LAYOUTS, RADIUS_LEVELS,
+  ACCENTS, BASES, BLOCKS, BLOCK_BY_ID, CTAS, DENSITY_LEVELS, FONTS, HEADLINES, LAYOUTS, RADIUS_LEVELS,
   type BlockDef, type Layout,
 } from './catalog.ts'
 
@@ -26,7 +26,7 @@ export interface SpecBlock { id: string; p: number; props: Record<string, string
 export interface Spec {
   brief: string
   layout: Layout
-  theme: { accent: string; dark: boolean; radius: number; density: number; font: string }
+  theme: { accent: string; base: string; dark: boolean; radius: number; density: number; font: string }
   copy: { name: string; headline: string; sub: string; cta: string }
   blocks: SpecBlock[]
 }
@@ -64,7 +64,7 @@ export function conversation(messages: string[]): string {
 
 // Decisions of taste, where a second choice is still a valid design. Remix explores these;
 // decisions of fact (layout, which blocks, which records) always follow Jev's top answer.
-const TASTE = new Set(['accent', 'font', 'radius', 'density', 'headline', 'hero.variant', 'features.variant', 'testimonials.variant', 'footer.variant', 'chart.variant', 'pricing.tiers'])
+const TASTE = new Set(['accent', 'base', 'font', 'radius', 'density', 'headline', 'hero.variant', 'features.variant', 'testimonials.variant', 'footer.variant', 'chart.variant', 'pricing.tiers', 'about.variant', 'gallery.variant', 'links.variant'])
 const RANK_WEIGHTS = [0.45, 0.35, 0.2]
 
 function seeded(seed: number, id: string): number {
@@ -117,6 +117,7 @@ export function buildQuestions(brief: string, latest?: string): Questions {
     layout: { type: 'choice', instructions: 'What kind of user interface does the brief ask for?', criteria: LAYOUTS },
     accent: { type: 'choice', instructions: 'Which accent colour best suits the product or brand described in the brief? If the brief names a colour, choose that colour.',
       criteria: Object.fromEntries(Object.entries(ACCENTS).map(([k, v]) => [k, v.about])) },
+    base: { type: 'choice', instructions: 'Which background tone suits the product or brand described in the brief?', criteria: Object.fromEntries(Object.entries(BASES).map(([k, v]) => [k, v.about])) },
     dark: { type: 'noul', instructions: 'Should this design use a dark theme? If the brief or a revision says light or dark, the most recent such instruction decides.',
       criteria: { true: 'The most recent instruction about it asks for dark; or nothing is said and the product is normally shown dark, such as developer tools, gaming, music or film', false: 'The most recent instruction about it asks for light, white or bright; or nothing is said and it is an ordinary product' } },
     font: { type: 'choice', instructions: 'Which typeface style suits the product or brand described in the brief?', criteria: FONTS },
@@ -149,6 +150,11 @@ export function buildQuestions(brief: string, latest?: string): Questions {
 
 const top = (probs: Record<string, number>, n = 6) =>
   Object.entries(probs).map(([key, p]) => ({ key, p })).sort((a, b) => b.p - a.p).slice(0, n)
+
+// Where a block sits on the page is a layout rule, not a judgement, so code owns it.
+const PAGE_ORDER = ['banner', 'navbar', 'sidebar', 'hero', 'logos', 'about', 'features', 'steps', 'flow', 'showcase', 'gallery', 'timeline', 'stats', 'testimonials',
+  'pricing', 'faq', 'links', 'auth', 'form', 'contact', 'newsletter', 'cta', 'footer',
+  'stat_cards', 'chart', 'meters', 'table', 'kanban', 'activity', 'checklist', 'chat', 'settings']
 
 /** What the previous turn picked, by decision id. Used for stickiness so a revision only changes what it is about. */
 export type Previous = Record<string, string>
@@ -214,6 +220,7 @@ export function assemble(brief: string, answers: Answers, pins: Pins = {}, seed 
   const layout = choice('layout', 'Canvas', 'Layout', 'marketing_page') as Layout
   const theme = {
     accent: choice('accent', 'Theme', 'Accent colour', 'neutral'),
+    base: choice('base', 'Theme', 'Background tone', 'neutral'),
     dark: noul('dark', 'Theme', 'Dark theme', false).yes,
     font: choice('font', 'Theme', 'Typeface', 'sans'),
     radius: score('radius', 'Theme', 'Corner radius', RADIUS_LEVELS, 1),
@@ -238,6 +245,7 @@ export function assemble(brief: string, answers: Answers, pins: Pins = {}, seed 
     chosen = candidates.filter(c => c.yes || extra.includes(c))
   }
 
+  chosen.sort((x, y) => PAGE_ORDER.indexOf(x.b.id) - PAGE_ORDER.indexOf(y.b.id))
   const blocks: SpecBlock[] = chosen.map(({ b, p }) => {
     const props: SpecBlock['props'] = {}
     for (const param of b.params) {
@@ -262,7 +270,7 @@ export function outline(spec: Spec) {
     brief: spec.brief,
     design: {
       kind: spec.layout.replace('_', ' '), headline: spec.copy.headline, button: spec.copy.cta,
-      accent_colour: spec.theme.accent, theme: spec.theme.dark ? 'dark' : 'light',
+      accent_colour: spec.theme.accent, background_tone: spec.theme.base, theme: spec.theme.dark ? 'dark' : 'light',
       // Titles alone hide what a section contains (the review once missed a GitHub button it could not see).
       sections: spec.blocks.map(b => {
         const details = Object.values(b.props).flatMap(v => (typeof v === 'boolean' ? [] : v)).map(v => String(v).replaceAll('_', ' ')).join(', ')

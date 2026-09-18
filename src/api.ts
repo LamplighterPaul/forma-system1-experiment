@@ -1,4 +1,5 @@
 import type { Decision, Pins, Previous, Review, RunStats, Spec } from '@shared/harness'
+import type { DesignText } from '@shared/text'
 
 export interface DesignResult { spec: Spec; decisions: Decision[]; stats: RunStats; seed: number; remix: number }
 export interface ReviewResult { review: Review; stats: RunStats }
@@ -24,3 +25,8 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
 
 export const design = (req: DesignRequest, signal?: AbortSignal) => post<DesignResult>('/api/design', req, signal)
 export const review = (spec: Spec, signal?: AbortSignal) => post<ReviewResult>('/api/review', { spec }, signal)
+
+export interface WriteStats { model: string; ms: number; inputTokens: number; outputTokens: number; usd: number; cached: boolean }
+export interface WriteResult { text: DesignText | null; writer: 'luna' | 'none'; stats?: WriteStats }
+export const write = (spec: Spec, previous: DesignText | null, signal?: AbortSignal) => post<WriteResult>('/api/write', { spec, previous }, signal)
+export const capabilities = () => fetch('/api/catalog').then(r => r.json() as Promise<{ decider: string; writer: 'luna' | 'none'; questionsPerCall: number }>)

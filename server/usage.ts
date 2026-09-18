@@ -14,7 +14,11 @@ interface Day {
   cachedAnswers: number
   reviews: number
   tokens: number
-  usd: number
+  usd: number           // Jev spend
+  writes: number        // calls that reached the writer (Luna)
+  writeTokensIn: number
+  writeTokensOut: number
+  writeUsd: number
   limited: number          // requests refused by a rate limit or the budget
   errors: number
 }
@@ -23,14 +27,14 @@ const FILE = process.env.USAGE_FILE ?? './data/usage.json'
 const KEEP_DAYS = 60
 const MAX_TRACKED = 20_000
 
-/** Hard stop for the day, in dollars. The page keeps working from cache; new Jev calls are refused. */
+/** Hard stop for the day, in dollars, across both models. The page keeps working from cache; new Jev calls are refused. */
 export const DAILY_USD_CAP = Number(process.env.DAILY_USD_CAP ?? 5)
 
 let days: Record<string, Day> = {}
 try { days = JSON.parse(readFileSync(FILE, 'utf8')) } catch { /* first run, or no volume mounted */ }
 
 const today = () => new Date().toISOString().slice(0, 10)
-const blank = (): Day => ({ salt: randomBytes(16).toString('hex'), visitors: [], sessions: [], designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, usd: 0, limited: 0, errors: 0 })
+const blank = (): Day => ({ salt: randomBytes(16).toString('hex'), visitors: [], sessions: [], designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, usd: 0, writes: 0, writeTokensIn: 0, writeTokensOut: 0, writeUsd: 0, limited: 0, errors: 0 })
 
 function day(): Day {
   const key = today()
@@ -71,20 +75,29 @@ export function spent(kind: 'design' | 'review', run: { cached: boolean; inputTo
   dirty = true
 }
 
+export function wrote(run: { inputTokens: number; outputTokens: number; usd: number }) {
+  const d = day()
+  d.writes++; d.writeTokensIn += run.inputTokens; d.writeTokensOut += run.outputTokens; d.writeUsd += run.usd
+  dirty = true
+}
+
+const total = (d: Day) => d.usd + (d.writeUsd ?? 0)
 export const refused = () => { day().limited++; dirty = true }
 export const failed = () => { day().errors++; dirty = true }
-export const overBudget = () => day().usd >= DAILY_USD_CAP
+export const overBudget = () => total(day()) >= DAILY_USD_CAP
 
 export function report() {
   const rows = Object.entries(days).sort(([a], [b]) => b.localeCompare(a)).map(([date, d]) => ({
     date, people: d.visitors.length, sessions: d.sessions.length, designs: d.designs, jevCalls: d.jevCalls,
-    cachedAnswers: d.cachedAnswers, reviews: d.reviews, tokens: d.tokens, usd: Number(d.usd.toFixed(4)), limited: d.limited, errors: d.errors,
+    cachedAnswers: d.cachedAnswers, reviews: d.reviews, tokens: d.tokens, jevUsd: Number(d.usd.toFixed(4)),
+    lunaCalls: d.writes ?? 0, lunaTokensIn: d.writeTokensIn ?? 0, lunaTokensOut: d.writeTokensOut ?? 0, lunaUsd: Number((d.writeUsd ?? 0).toFixed(4)),
+    usd: Number(total(d).toFixed(4)), limited: d.limited, errors: d.errors,
   }))
-  const sum = (k: 'designs' | 'jevCalls' | 'tokens' | 'usd') => rows.reduce((n, r) => n + r[k], 0)
+  const sum = (k: 'designs' | 'jevCalls' | 'tokens' | 'usd' | 'jevUsd' | 'lunaCalls' | 'lunaUsd') => rows.reduce((n, r) => n + r[k], 0)
   return {
-    today: rows.find(r => r.date === today()) ?? { date: today(), people: 0, sessions: 0, designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, usd: 0, limited: 0, errors: 0 },
+    today: rows.find(r => r.date === today()) ?? { date: today(), people: 0, sessions: 0, designs: 0, jevCalls: 0, cachedAnswers: 0, reviews: 0, tokens: 0, jevUsd: 0, lunaCalls: 0, lunaTokensIn: 0, lunaTokensOut: 0, lunaUsd: 0, usd: 0, limited: 0, errors: 0 },
     dailyUsdCap: DAILY_USD_CAP,
-    allTime: { designs: sum('designs'), jevCalls: sum('jevCalls'), tokens: sum('tokens'), usd: Number(sum('usd').toFixed(4)) },
+    allTime: { designs: sum('designs'), jevCalls: sum('jevCalls'), lunaCalls: sum('lunaCalls'), jevUsd: Number(sum('jevUsd').toFixed(4)), lunaUsd: Number(sum('lunaUsd').toFixed(4)), usd: Number(sum('usd').toFixed(4)) },
     days: rows,
   }
 }

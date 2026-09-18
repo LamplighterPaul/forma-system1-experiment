@@ -25,6 +25,26 @@ export const ACCENTS: Record<string, { about: string; light: string; dark: strin
   green: { about: 'Green: nature, plants, sustainability, money, health, growth', light: 'oklch(0.527 0.137 150)', dark: 'oklch(0.648 0.175 150)' },
   teal: { about: 'Teal: calm, wellness, travel, water, clarity', light: 'oklch(0.511 0.086 186)', dark: 'oklch(0.704 0.123 182)' },
   sky: { about: 'Sky blue: weather, flight, cloud services, children, freshness', light: 'oklch(0.588 0.139 242)', dark: 'oklch(0.685 0.148 237)' },
+  navy: { about: 'Navy: law, consulting, maritime, institutions, heritage, authority', light: 'oklch(0.36 0.12 262)', dark: 'oklch(0.6 0.14 262)' },
+  cyan: { about: 'Cyan: data, science, laboratories, electric, futuristic', light: 'oklch(0.56 0.11 215)', dark: 'oklch(0.75 0.13 210)' },
+  mint: { about: 'Mint: fresh, clean, dental, skincare, light and healthy', light: 'oklch(0.6 0.12 165)', dark: 'oklch(0.78 0.13 165)' },
+  forest: { about: 'Forest green: outdoors, hiking, organic farming, heritage, wood', light: 'oklch(0.42 0.09 155)', dark: 'oklch(0.62 0.12 155)' },
+  lime: { about: 'Lime: energetic, sport, youth, bold start-ups', light: 'oklch(0.62 0.17 128)', dark: 'oklch(0.8 0.19 128)' },
+  gold: { about: 'Gold: premium, awards, jewellery, celebration, hospitality', light: 'oklch(0.62 0.12 85)', dark: 'oklch(0.78 0.13 88)' },
+  brown: { about: 'Brown: leather, chocolate, wood, rustic, earthy craft', light: 'oklch(0.45 0.08 55)', dark: 'oklch(0.65 0.09 60)' },
+  coral: { about: 'Coral: friendly, social, lifestyle, summer, approachable', light: 'oklch(0.66 0.17 28)', dark: 'oklch(0.73 0.16 30)' },
+  rose: { about: 'Rose: weddings, flowers, romance, gentle and elegant', light: 'oklch(0.58 0.18 12)', dark: 'oklch(0.7 0.16 12)' },
+  fuchsia: { about: 'Fuchsia or magenta: nightlife, pop culture, bold creative, festivals', light: 'oklch(0.57 0.25 328)', dark: 'oklch(0.68 0.24 328)' },
+  purple: { about: 'Deep purple: royalty, mysticism, gaming, premium tech', light: 'oklch(0.47 0.2 305)', dark: 'oklch(0.63 0.2 305)' },
+  slate: { about: 'Slate grey-blue: industrial, architecture, engineering, understated', light: 'oklch(0.45 0.04 257)', dark: 'oklch(0.7 0.04 257)' },
+}
+
+// The paper the design sits on. Tints are subtle; the accent still carries the brand.
+export const BASES: Record<string, { about: string; hue: number; chroma: number }> = {
+  neutral: { about: 'Pure neutral white or black: software, modern, default', hue: 0, chroma: 0 },
+  warm: { about: 'Warm cream and stone tones: food, craft, hospitality, wellbeing, editorial', hue: 75, chroma: 0.012 },
+  cool: { about: 'Cool blue-grey tones: technology, finance, healthcare, engineering', hue: 255, chroma: 0.01 },
+  tinted: { about: 'A faint tint of the accent colour: playful, branded, distinctive', hue: -1, chroma: 0.014 },
 }
 
 export const FONTS: Record<string, string> = {
@@ -371,6 +391,7 @@ const bankOf = <T,>(src: Record<string, T>, about: (v: T, k: string) => string) 
   Object.fromEntries(Object.entries(src).map(([k, v]) => [k, about(v, k)]))
 
 export const BLOCKS: BlockDef[] = [
+  { id: 'banner', title: 'Announcement bar', layouts: ['marketing_page'], need: 'Does the brief mention a launch, an offer, a sale, an event date or an announcement worth a bar at the very top of the page?', params: [] },
   { id: 'navbar', title: 'Navigation bar', layouts: ['marketing_page'], always: ['marketing_page'], need: '', params: [
     { kind: 'bank', id: 'items', ask: 'Would the website described in the brief have a top navigation link called', bank: NAV_ITEMS, min: 2, max: 5, fallback: ['Features', 'Pricing', 'About'] },
     { kind: 'noul', id: 'login', ask: 'Does the product in the brief have user accounts that people sign in to?', fallback: false } ] },
@@ -407,6 +428,19 @@ export const BLOCKS: BlockDef[] = [
       sign_in: 'Returning users log in with existing credentials', sign_up: 'New users create an account or register' } },
     { kind: 'noul', id: 'social', ask: 'Should people be able to continue with a third-party account such as Google, Apple or GitHub instead of a password?', fallback: true },
     { kind: 'bank', id: 'providers', ask: 'Would the audience of the product in the brief expect to sign in with', bank: LOGIN_PROVIDERS, min: 1, max: 3, fallback: ['Google', 'Apple'] } ] },
+  { id: 'about', title: 'About', layouts: ['marketing_page'], need: 'Should the page described in the brief include an about section introducing a person, a team or the organisation, such as a personal site, portfolio, studio or small business?', params: [
+    { kind: 'choice', id: 'variant', ask: 'How should the about section be laid out?', fallback: 'split', options: {
+      split: 'A portrait or picture on one side and the text on the other: personal sites, founders, studios', centered: 'Centred text only: short statements, manifestos, minimal pages' } } ] },
+  { id: 'links', title: 'Link list', layouts: ['marketing_page', 'centered_card'], need: 'Does the brief ask for links to profiles or other sites, such as LinkedIn, GitHub, social media, or a link-in-bio page?', params: [
+    { kind: 'choice', id: 'variant', ask: 'How should the links be shown?', fallback: 'buttons', options: {
+      buttons: 'A stack of full-width buttons: link-in-bio pages, personal pages', row: 'A compact row of small links: inside a larger page' } } ] },
+  { id: 'steps', title: 'How it works', layouts: ['marketing_page'], need: 'Would the page described in the brief benefit from a short numbered explanation of how the product or service works?', params: [] },
+  { id: 'timeline', title: 'Timeline', layouts: ['marketing_page'], need: 'Does the brief describe something chronological to show, such as work experience, a CV, company history, a roadmap or an event schedule?', params: [] },
+  { id: 'gallery', title: 'Gallery', layouts: ['marketing_page'], need: 'Does the brief describe something visual that calls for an image gallery, such as photography, art, a venue, food, interiors or a product in use?', params: [
+    { kind: 'choice', id: 'variant', ask: 'Which gallery layout suits the brief?', fallback: 'grid', options: {
+      grid: 'An even grid of equal pictures', mosaic: 'A mosaic with one large picture and smaller ones: editorial, photography' } } ] },
+  { id: 'flow', title: 'Flow diagram', layouts: ['marketing_page', 'app_screen'], need: 'Does the brief describe a process, pipeline, workflow, architecture, automation or journey that a diagram of connected steps would explain?', params: [] },
+  { id: 'contact', title: 'Contact details', layouts: ['marketing_page'], need: 'Should the page described in the brief show contact details such as an email address, a location or opening hours?', params: [] },
   { id: 'cta', title: 'Call to action', layouts: ['marketing_page'], need: 'Should the page described in the brief end with a large call-to-action band inviting the visitor to act?', params: [] },
   { id: 'newsletter', title: 'Newsletter signup', layouts: ['marketing_page'], need: 'Does the brief ask for a newsletter signup or an email subscription box, or describe a blog, publication or community that visitors would subscribe to by email?', params: [] },
   { id: 'footer', title: 'Footer', layouts: ['marketing_page'], always: ['marketing_page'], need: '', params: [
@@ -427,6 +461,8 @@ export const BLOCKS: BlockDef[] = [
   { id: 'chat', title: 'Conversation', layouts: ['app_screen'], need: 'Does the brief describe messaging, chat, an inbox conversation or talking to an assistant?', params: [] },
   { id: 'settings', title: 'Settings panel', layouts: ['app_screen'], need: 'Does the brief ask for settings, preferences, an account page or notification options?', params: [
     { kind: 'bank', id: 'items', ask: 'Would the application described in the brief offer this setting', bank: bankOf(SETTINGS, s => `${s.label}: ${s.desc}`), min: 3, max: 6, fallback: ['email_notifications', 'two_factor', 'dark_mode'] } ] },
+  { id: 'kanban', title: 'Board', layouts: ['app_screen'], need: 'Does the brief describe work moving through stages, such as a kanban board, a sales pipeline, hiring stages or order fulfilment?', params: [] },
+  { id: 'meters', title: 'Progress meters', layouts: ['app_screen'], need: 'Does the brief describe goals, quotas, usage limits, budgets or progress that should be shown as progress bars?', params: [] },
 ]
 
 export const BLOCK_BY_ID = Object.fromEntries(BLOCKS.map(b => [b.id, b]))

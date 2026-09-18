@@ -1,6 +1,6 @@
 # Forma · System One experiment
 
-**A design harness driven only by [Jev](https://typesafe.ai), a model that cannot write.**
+**A design harness where [Jev](https://typesafe.ai), a model that cannot write, makes every decision, and Luna only fills in the words.**
 Live at https://forma-experiment.zammitpaul.com
 
 Describe a page, an app screen or a form and press Enter. A design appears in about a
@@ -13,10 +13,23 @@ Forma does the work; Jev only picks.
 
 By [Paul Zammit](https://zammitpaul.com/about). Not affiliated with TypeSafe AI.
 
+## Two models, two jobs
+
+- **Jev decides. Always on.** Layout, blocks, variants, colours, typeface: every structural decision is a
+  typed answer with a probability.
+- **Luna writes. Optional.** OpenAI's `gpt-5.6-luna` fills typed text slots (`shared/text.ts`) against a
+  strict JSON schema built from the design Jev decided. It produces no markup and no addresses: links
+  are extracted by code from what the person typed, and Luna only labels them. Nothing is fetched from
+  the web. Switch Luna off and the pre-written copy is used instead.
+- **Code assembles.** Order, limits, fallbacks and sanitising live in code.
+
+The performance panel shows each stage of a round (Jev decide, Luna write, Jev review) with time, tokens
+and cost. Diagram blocks are drawn with [React Flow](https://reactflow.dev).
+
 ## How it works
 
 1. **The catalog** (`shared/catalog.ts`) is everything Jev may pick from: three layouts,
-   22 prebuilt [shadcn/ui](https://ui.shadcn.com) blocks with typed parameters, theme
+   32 prebuilt [shadcn/ui](https://ui.shadcn.com) blocks with typed parameters, theme
    tokens named by meaning rather than hex, and banks of pre-written copy (headlines,
    features, metrics, form fields, FAQs). Every word on the canvas was written in advance.
 2. **One fan-out call** (`shared/harness.ts`). The catalog becomes about 250 typed
@@ -48,12 +61,12 @@ can choose from.
 
 ## Run it
 
-You need Node 24+ and a [TypeSafe API key](https://console.typesafe.ai).
+You need Node 24+ and a [TypeSafe API key](https://console.typesafe.ai). An OpenAI key is optional and enables Luna.
 
 ```sh
 npm ci
 npm run build
-TYPESAFE_API_KEY=... npm start        # http://localhost:8787
+TYPESAFE_API_KEY=... OPENAI_API_KEY=... npm start        # http://localhost:8787
 ```
 
 For development run `npm run dev` beside the server; Vite proxies `/api`.

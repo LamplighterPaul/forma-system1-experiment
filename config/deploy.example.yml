@@ -19,10 +19,11 @@ volumes:
 
 env:
   clear:
-    DAILY_USD_CAP: 5          # new Jev calls stop for the day once this much is spent
+    DAILY_USD_CAP: 5          # new model calls stop for the day once this much is spent (Jev + Luna)
   secret:
     - STATS_TOKEN            # enables the private GET /api/stats report
     - TYPESAFE_API_KEY       # Jev by TypeSafe AI; without it the server falls back to a labelled mock
+    - OPENAI_API_KEY         # Luna (gpt-5.6-luna) writes the words; without it the pre-written copy is used
 
 registry:
   server: ghcr.io

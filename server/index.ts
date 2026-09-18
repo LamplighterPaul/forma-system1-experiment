@@ -8,6 +8,8 @@ import { assemble, buildQuestions, buildReview, conversation, outline, readRevie
 import { timingSafeEqual } from 'node:crypto'
 import { decide, deciderName, type Run } from './decider.ts'
 import * as usage from './usage.ts'
+import { write, writerName, type WriteRun } from './writer.ts'
+import type { DesignText } from '../shared/text.ts'
 
 const app = new Hono()
 
@@ -72,6 +74,7 @@ app.get('/api/stats', c => {
 
 app.get('/api/catalog', c => c.json({
   decider: deciderName(),
+  writer: writerName(),
   layouts: LAYOUTS,
   blocks: BLOCKS.map(b => ({ id: b.id, title: b.title, layouts: b.layouts, asks: b.need || 'always placed', params: b.params.map(p => ({ id: p.id, kind: p.kind, options: p.kind === 'choice' ? Object.keys(p.options) : p.kind === 'bank' ? Object.keys(p.bank) : ['yes', 'no'] })) })),
   questionsPerCall: Object.keys(buildQuestions('')).length,
@@ -152,10 +155,32 @@ app.post('/api/review', async c => {
   }
 })
 
+// Luna writes the words for a design Jev has decided. Optional: without a key, or with the switch off, the pre-written copy stays.
+app.post('/api/write', async c => {
+  const body = await c.req.json().catch(() => ({}))
+  const spec = cleanSpec(body.spec)
+  if (!spec) return c.json({ error: 'Invalid spec' }, 400)
+  if (writerName() === 'none') return c.json({ text: null, writer: 'none' })
+  const blocked = gate(c)
+  if (blocked) return blocked
+  try {
+    const previous = body.previous && typeof body.previous === 'object' && JSON.stringify(body.previous).length < 20_000 ? (body.previous as DesignText) : null
+    const key = `w:${spec.brief}|${JSON.stringify(spec.blocks.map(b => [b.id, b.props]))}|${spec.theme.font}${spec.theme.dark}`
+    const hit = cache.get(key) as WriteRun | undefined
+    const run = hit ?? remember(key, await write(spec, previous))
+    if (!hit) usage.wrote(run)
+    return c.json({ text: run.text, writer: 'luna', stats: { model: run.model, ms: hit ? 0 : run.ms, inputTokens: hit ? 0 : run.inputTokens, outputTokens: hit ? 0 : run.outputTokens, usd: hit ? 0 : run.usd, cached: Boolean(hit) } })
+  } catch (e) {
+    usage.failed()
+    console.error('write failed', e)
+    return c.json({ error: e instanceof Error ? e.message : 'Writer failed' }, 502)
+  }
+})
+
 app.use('/assets/*', async (c, next) => { await next(); c.header('Cache-Control', 'public, max-age=31536000, immutable') })
 app.use('/*', serveStatic({ root: './dist' }))
 app.get('*', async c => c.html(await readFile('./dist/index.html', 'utf8')))
 
 const port = Number(process.env.PORT ?? 8787)
 serve({ fetch: app.fetch, port, hostname: '0.0.0.0' })
-console.log(`forma-experiment on :${port}, decider: ${deciderName()}`)
+console.log(`forma-experiment on :${port}, decider: ${deciderName()}, writer: ${writerName()}`)

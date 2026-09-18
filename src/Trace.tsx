@@ -14,7 +14,7 @@ export function RunLine({ label, stats }: { label: string; stats: RunStats }) {
 
 export function ReviewCard({ review }: { review: Review }) {
   return (
-    <div className="rounded-lg border bg-card p-3 text-sm">
+    <div className="border p-2.5 text-xs">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-medium">Jev’s review</p>
         <p className="font-mono text-xs text-muted-foreground">fit {review.fit.toFixed(2)} / 3 · conf {pct(review.confidence)}</p>
@@ -31,7 +31,7 @@ function Row({ d, pins, onPin }: { d: Decision; pins: Pins; onPin: (id: string, 
   const options = d.kind === 'noul' ? [{ key: 'yes', p: d.options[0].p }, { key: 'no', p: 1 - d.options[0].p }] : d.options.slice(0, d.kind === 'bank' ? 6 : 4)
   return (
     <div className="py-2">
-      <div className="flex items-baseline justify-between gap-3 text-sm">
+      <div className="flex items-baseline justify-between gap-3 text-xs">
         <span className="shrink-0 text-muted-foreground">{d.label}</span>
         <span className="flex min-w-0 items-center gap-1 font-medium">{d.pinned ? <Pin className="size-3 shrink-0 text-foreground" /> : d.remixed ? <Shuffle className="size-3 shrink-0 text-muted-foreground" /> : null}<span className="truncate">{d.kind === 'bank' ? '' : d.picked.replaceAll('_', ' ')}</span></span>
       </div>
@@ -61,8 +61,8 @@ export function Trace({ decisions, pins, onPin }: { decisions: Decision[]; pins:
   return (
     <div className="space-y-3">
       {[...groups].map(([group, rows]) => (
-        <details key={group} open={group === 'Canvas' || group === 'Theme' || group === 'Blocks'} className="rounded-lg border bg-card px-3">
-          <summary className="cursor-pointer py-2 text-sm font-medium select-none">{group} <span className="font-normal text-muted-foreground">· {rows.length}</span></summary>
+        <details key={group} open={group === 'Canvas' || group === 'Theme'} className="border px-2.5">
+          <summary className="cursor-pointer py-1.5 text-xs text-white select-none">{group} <span className="font-normal text-muted-foreground">· {rows.length}</span></summary>
           <div className="divide-y border-t">{rows.map(d => <Row key={d.id} d={d} pins={pins} onPin={onPin} />)}</div>
         </details>
       ))}

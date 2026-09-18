@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./shadcn-tailwind.css"; /* vendored from the shadcn package (MIT), so the app does not depend on its CLI */
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/jetbrains-mono";
 
@@ -73,7 +73,7 @@
     --border: rgb(255 255 255 / 10%);
     --input: rgb(255 255 255 / 14%);
     --ring: #6f6f78;
-    --radius: 0.5rem;
+    --radius: 0rem;  /* the shell is a terminal: square corners everywhere */
     color-scheme: dark;
 }
 
@@ -166,6 +166,8 @@
 .forma-canvas .section { padding-block: var(--forma-section); }
 .forma-canvas .forma-grid { gap: var(--forma-gap); }
 .forma-heading { font-family: var(--forma-heading); }
+/* shadcn pins card titles to the sans face; inside the canvas they follow the typeface Jev chose. */
+.forma-canvas [data-slot="card-title"] { font-family: inherit; }
 
 /* The Forma interface is set in JetBrains Mono; the canvas keeps its own type, chosen by Jev. */
 html { font-family: var(--font-mono); }
