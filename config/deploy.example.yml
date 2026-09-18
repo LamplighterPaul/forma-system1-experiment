@@ -1,0 +1,28 @@
+# Example Kamal config. Copy to config/deploy.yml (git-ignored) and fill in your own host and domain.
+service: forma-system1-experiment
+image: forma-system1-experiment
+
+servers:
+  web:
+    hosts:
+      - 203.0.113.10
+
+proxy:
+  host: forma.example.com
+  app_port: 8080
+  ssl: true
+  healthcheck:
+    path: /up
+
+env:
+  secret:
+    - TYPESAFE_API_KEY       # Jev by TypeSafe AI; without it the server falls back to a labelled mock
+
+registry:
+  server: ghcr.io
+  username: your-user
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
