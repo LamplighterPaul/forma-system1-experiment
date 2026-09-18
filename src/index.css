@@ -9,6 +9,7 @@
 
 @theme inline {
     --font-heading: var(--font-sans);
+    --breakpoint-wide: 72rem;  /* the three-column shell; a named breakpoint so it sorts after lg */
     --font-sans: 'Geist Variable', sans-serif;
     --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
     --color-sidebar-ring: var(--sidebar-ring);
