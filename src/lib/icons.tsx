@@ -1,4 +1,5 @@
 import {
+  Bookmark, Compass, Image as ImageIcon, Library, Pause, Plus, Repeat2, Share, ShoppingCart, SkipBack, SkipForward, User,
   Activity, Award, BadgeCheck, Bell, BookOpen, Calendar, Camera, ChartColumn, Check, CircleX, Clock, Code, Download, Gift, GitBranch,
   Globe, GraduationCap, Hammer, Headphones, Heart, History, House, KeyRound, LayoutGrid, Leaf, Lock, Map, MapPin, MessageCircle,
   Percent, Play, Plug, Receipt, Recycle, Search, Send, ShieldCheck, Smartphone, Smile, Sparkles, Star, Tag, Target, Terminal,
@@ -13,7 +14,8 @@ const ICONS: Record<string, LucideIcon> = {
   award: Award, message: MessageCircle, watch: Watch, play: Play, clock: Clock, wallet: Wallet, send: Send, receipt: Receipt,
   globe: Globe, percent: Percent, map: Map, tag: Tag, check: Check, x_circle: CircleX, thumbs_up: ThumbsUp, headphones: Headphones,
   ticket: Ticket, graduation: GraduationCap, badge: BadgeCheck, book: BookOpen, video: Video, hammer: Hammer, user_check: UserCheck,
-  camera: Camera, smile: Smile, home: House,
+  camera: Camera, smile: Smile, home: House, compass: Compass, library: Library, plus: Plus, user: User, cart: ShoppingCart,
+  bookmark: Bookmark, repeat: Repeat2, share: Share, image: ImageIcon, pause: Pause, skip_back: SkipBack, skip_forward: SkipForward,
 }
 
 export function Icon({ name, className }: { name: string; className?: string }) {

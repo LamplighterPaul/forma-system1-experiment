@@ -37,6 +37,11 @@ them**: one typed question per box ("which box is this a sub-topic of?"), answer
 so "add a fuel tank to the fuel system" lands where it was asked. Code validates the graph and lays it out. A brief that is only a diagram ("a mind map of…", "org chart for…") gets a
 full-canvas diagram layout.
 
+**The catalog grows where real briefs hit it.** The first outside visitors asked for "an x feed" and "a podcast app
+for mobile"; the catalog only had dashboards, and Jev's own review scored the results 0.8 out of 3. That became a
+phone-app layout with a tab bar, and social and media blocks (feed, stories, composer, profile, player, episode
+list). The same briefs now score 2.3 and 3.0. When a match is still weak, the thread says so.
+
 **Jev routes the work.** The same call that designs the page also answers "does this turn need new words at
 all?". "Make it dark" does not, so Luna is never called and the turn takes about a second. When a turn only
 brings in a new section, Luna writes that section alone and the rest stays word for word. Code keeps the veto:
@@ -48,8 +53,8 @@ thresholds and the refusal wording; Luna is never called for a refused brief.
 
 ## How it works
 
-1. **The catalog** (`shared/catalog.ts`) is everything Jev may pick from: four layouts,
-   33 prebuilt [shadcn/ui](https://ui.shadcn.com) blocks with typed parameters, theme
+1. **The catalog** (`shared/catalog.ts`) is everything Jev may pick from: five layouts,
+   40 prebuilt [shadcn/ui](https://ui.shadcn.com) blocks with typed parameters, theme
    tokens named by meaning rather than hex, and banks of pre-written copy (headlines,
    features, metrics, form fields, FAQs). Every word on the canvas was written in advance.
 2. **One fan-out call** (`shared/harness.ts`). The catalog becomes about 250 typed

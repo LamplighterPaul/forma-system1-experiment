@@ -11,6 +11,7 @@ const EXAMPLES = [
   'Portfolio for a designer called Maya Borg with projects and links to github.com/example',
   'Dashboard for an online shop: revenue, orders and a sales chart',
   'Dark sign-up screen for a developer tool called Shipyard',
+  'A podcast app for mobile',
   'A mind map of what a startup founder has to think about',
 ]
 const WIDTHS = { desktop: '100%', tablet: '820px', phone: '390px' } as const
@@ -153,7 +154,11 @@ export default function App() {
 
       setStage('review')
       const reviewSpec = words ? { ...r.spec, copy: { name: words.name, headline: words.headline, sub: words.sub, cta: words.cta } } : r.spec
-      await review(reviewSpec, (words?.blocks.flow?.items ?? []).map(i => i.title), ctl.signal).then(v => { round.review = v.stats; setReviewed(v); setPerf({ ...round }) }).catch(() => {})
+      await review(reviewSpec, (words?.blocks.flow?.items ?? []).map(i => i.title), ctl.signal).then(v => {
+        round.review = v.stats; setReviewed(v); setPerf({ ...round })
+        // The harness says so when it could not really do what was asked. Jev supplies the score; the words are code's.
+        if (v.review.fit < 1.3 || v.review.missing >= 0.6) setTurn(t => ({ ...t, weak: `weak match (fit ${v.review.fit.toFixed(1)}/3). Forma has no block for part of this yet. It only picks from a fixed catalog.` }))
+      }).catch(() => {})
       const t = totals(round)
       setSession(s => ({ rounds: s.rounds + 1, usd: s.usd + t.usd, jevUsd: s.jevUsd + (round.decide?.usd ?? 0) + (round.review?.usd ?? 0), lunaUsd: s.lunaUsd + (round.write?.usd ?? 0) }))
       return r
@@ -260,7 +265,7 @@ export default function App() {
               <div className="space-y-3 text-muted-foreground">
                 <p className="text-foreground">An experiment: how fast and cheap can design get?</p>
                 <p><span className="text-foreground">Jev</span>, a small decision model, picks the design. <span className="text-foreground">Luna</span>, a traditional LLM, only writes the words. Switch Luna off to see Jev alone.</p>
-                <p>Describe a page, a screen, a form or a diagram. Press enter.</p>
+                <p>Describe a page, an app screen, a phone app, a form or a diagram. Press enter.</p>
                 <p className="text-xs">Briefs are logged anonymously for the experiment. Don’t type anything private.</p>
                 <div>
                   {EXAMPLES.map((e, i) => <button key={e} type="button" onClick={() => send(e).catch(() => {})} className="block w-full cursor-pointer truncate py-0.5 text-left hover:text-white">{i + 1}. {e}</button>)}
@@ -272,6 +277,7 @@ export default function App() {
                 <p className="text-white"><span className="text-primary">&gt;</span> {turn.text}</p>
                 {turn.error ? <p className="pl-3.5 text-destructive">{turn.error}</p> : null}
                 {turn.refused ? <p className="pl-3.5 text-muted-foreground"><span className="text-primary">refused</span> · {turn.refused}</p> : null}
+                {turn.weak ? <p className="pl-3.5 text-muted-foreground"><span className="text-primary">jev</span> · {turn.weak}</p> : null}
                 {turn.changes ? (
                   <div className="pl-3.5 text-muted-foreground">
                     <p>{turn.remix ? 'remix · ' : ''}{turn.stats && !turn.stats.cached ? `jev ${turn.stats.ms} ms` : 'jev cached'}</p>

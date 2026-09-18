@@ -1,13 +1,15 @@
 // The catalog is everything Jev can pick from. Jev never writes text or code:
 // every string below was written in advance, and Jev only chooses among them.
 
-export type Layout = 'marketing_page' | 'app_screen' | 'centered_card' | 'diagram'
+export type Layout = 'marketing_page' | 'app_screen' | 'mobile_app' | 'centered_card' | 'diagram'
 
 export const LAYOUTS: Record<Layout, string> = {
   marketing_page:
     'A public web page that scrolls: landing page, product page, portfolio, event page, pricing page',
   app_screen:
-    'A screen inside a logged-in application: dashboard, admin panel, inbox, table of records, analytics, settings',
+    'A desktop screen inside a logged-in application: dashboard, admin panel, inbox, table of records, analytics, settings, or a desktop social network or feed',
+  mobile_app:
+    'A screen of a phone app: anything described as a mobile app, an iPhone or Android app, or "for mobile". Shown in a phone frame with a tab bar',
   centered_card:
     'One focused card in the middle of the screen: sign in, sign up, waitlist, contact form, short form',
   diagram:
@@ -216,6 +218,8 @@ export const NAV_ITEMS: Record<string, string> = {
 }
 
 export const SIDEBAR_ITEMS: Record<string, { icon: string; about: string }> = {
+  Home: { icon: 'home', about: 'the main feed of a social or content app' }, Explore: { icon: 'compass', about: 'discover people, topics or content' }, Notifications: { icon: 'bell', about: 'mentions, likes and alerts in a social app' },
+  Messages: { icon: 'message', about: 'direct messages between people' }, Bookmarks: { icon: 'bookmark', about: 'saved posts or items' }, Profile: { icon: 'user', about: "the person's own page" }, Library: { icon: 'library', about: 'saved music, podcasts or videos' },
   Dashboard: { icon: 'home', about: 'overview of key numbers' }, Analytics: { icon: 'chart', about: 'charts and reports' },
   Orders: { icon: 'receipt', about: 'shop or restaurant orders' }, Products: { icon: 'tag', about: 'catalogue and inventory' },
   Customers: { icon: 'users', about: 'people who buy or subscribe' }, Projects: { icon: 'layout', about: 'ongoing work' },
@@ -228,6 +232,14 @@ export const SIDEBAR_ITEMS: Record<string, { icon: string; about: string }> = {
   Patients: { icon: 'heart', about: 'healthcare records' }, Bookings: { icon: 'map_pin', about: 'reservations and stays' },
   Campaigns: { icon: 'sparkles', about: 'marketing and email' }, Journal: { icon: 'book', about: 'personal entries and notes' },
   Settings: { icon: 'key', about: 'preferences' },
+}
+
+
+export const TAB_ITEMS: Record<string, { icon: string; about: string }> = {
+  Home: { icon: 'home', about: 'the main screen' }, Search: { icon: 'search', about: 'find things' }, Discover: { icon: 'compass', about: 'browse and explore new content' },
+  Library: { icon: 'library', about: 'saved music, podcasts, books or videos' }, Feed: { icon: 'activity', about: 'posts from people you follow' }, Create: { icon: 'plus', about: 'make a new post or item' },
+  Inbox: { icon: 'message', about: 'messages' }, Alerts: { icon: 'bell', about: 'notifications' }, Profile: { icon: 'user', about: 'your own account' }, Cart: { icon: 'cart', about: 'shopping basket' },
+  Stats: { icon: 'chart', about: 'progress and numbers' }, Calendar: { icon: 'calendar', about: 'schedule and bookings' }, Downloads: { icon: 'download', about: 'offline content' }, Settings: { icon: 'key', about: 'preferences' },
 }
 
 export const FORM_FIELDS: Record<string, { label: string; type: string; placeholder: string; about: string }> = {
@@ -457,20 +469,30 @@ export const BLOCKS: BlockDef[] = [
 
   { id: 'sidebar', title: 'App sidebar', layouts: ['app_screen'], always: ['app_screen'], need: '', params: [
     { kind: 'bank', id: 'items', ask: 'Would the application described in the brief have a sidebar section called', bank: bankOf(SIDEBAR_ITEMS, (v, k) => `${k} (${v.about})`), min: 4, max: 7, fallback: ['Dashboard', 'Analytics', 'Customers', 'Settings'] } ] },
-  { id: 'stat_cards', title: 'Stat cards', layouts: ['app_screen'], need: 'Should the screen described in the brief show key numbers or KPIs as a row of summary cards?', params: [
+  { id: 'stat_cards', title: 'Stat cards', layouts: ['app_screen', 'mobile_app'], need: 'Should the screen described in the brief show key numbers or KPIs as a row of summary cards?', params: [
     { kind: 'bank', id: 'items', ask: 'Would the application described in the brief track this number', bank: bankOf(METRICS, m => `${m.label} (${m.about})`), min: 3, max: 4, fallback: ['revenue', 'customers', 'orders', 'conversion'] } ] },
-  { id: 'chart', title: 'Chart', layouts: ['app_screen'], need: 'Should the screen described in the brief include a chart showing a trend over time?', params: [
+  { id: 'chart', title: 'Chart', layouts: ['app_screen', 'mobile_app'], need: 'Should the screen described in the brief include a chart showing a trend over time?', params: [
     { kind: 'choice', id: 'variant', ask: 'Which chart type suits the data in the brief?', fallback: 'area', options: {
       area: 'Smooth area line: continuous trends like revenue, traffic, balance, weight', bars: 'Bars: counts per day or week like orders, workouts, signups, tickets' } } ] },
-  { id: 'table', title: 'Data table', layouts: ['app_screen'], need: 'Should the screen described in the brief include a table or list of records?', params: [
+  { id: 'table', title: 'Data table', layouts: ['app_screen'], need: 'Should the screen described in the brief include a table of business records, such as orders, customers, invoices or tasks? A social feed of posts does not count.', params: [
     { kind: 'choice', id: 'entity', ask: 'What records would the table list?', fallback: 'customers', options: bankOf(TABLES, t => t.about) } ] },
-  { id: 'activity', title: 'Activity feed', layouts: ['app_screen'], need: 'Should the screen described in the brief show a feed of recent activity, events or notifications?', params: [] },
-  { id: 'checklist', title: 'Checklist', layouts: ['app_screen'], need: 'Does the brief describe to-do items, habits, goals or a checklist that the user ticks off?', params: [] },
-  { id: 'chat', title: 'Conversation', layouts: ['app_screen'], need: 'Does the brief describe messaging, chat, an inbox conversation or talking to an assistant?', params: [] },
-  { id: 'settings', title: 'Settings panel', layouts: ['app_screen'], need: 'Does the brief ask for settings, preferences, an account page or notification options?', params: [
+  { id: 'activity', title: 'Activity feed', layouts: ['app_screen', 'mobile_app'], need: 'Should the screen described in the brief show a feed of recent activity, events or notifications?', params: [] },
+  { id: 'checklist', title: 'Checklist', layouts: ['app_screen', 'mobile_app'], need: 'Does the brief describe to-do items, habits, goals or a checklist that the user ticks off?', params: [] },
+  { id: 'chat', title: 'Conversation', layouts: ['app_screen', 'mobile_app'], need: 'Does the brief describe messaging, chat, an inbox conversation or talking to an assistant?', params: [] },
+  { id: 'settings', title: 'Settings panel', layouts: ['app_screen', 'mobile_app'], need: 'Does the brief ask for settings, preferences, an account page or notification options?', params: [
     { kind: 'bank', id: 'items', ask: 'Would the application described in the brief offer this setting', bank: bankOf(SETTINGS, s => `${s.label}: ${s.desc}`), min: 3, max: 6, fallback: ['email_notifications', 'two_factor', 'dark_mode'] } ] },
+  { id: 'tabbar', title: 'Tab bar', layouts: ['mobile_app'], always: ['mobile_app'], need: '', params: [
+    { kind: 'bank', id: 'items', ask: 'Would the phone app described in the brief have a bottom tab called', bank: bankOf(TAB_ITEMS, (v, k) => `${k} (${v.about})`), min: 3, max: 5, fallback: ['Home', 'Search', 'Profile'] } ] },
+  { id: 'stories', title: 'Stories row', layouts: ['mobile_app', 'app_screen'], need: 'Does the brief describe a photo or social app where a row of round story or highlight avatars would appear at the top, like Instagram?', params: [] },
+  { id: 'composer', title: 'Post composer', layouts: ['mobile_app', 'app_screen'], need: 'Does the brief describe a social network, community or microblog where people write and publish their own posts?', params: [] },
+  { id: 'feed', title: 'Social feed', layouts: ['mobile_app', 'app_screen'], need: 'Does the brief describe a feed or timeline of posts from people, such as a social network, a community, a microblog like X or Twitter, Facebook, Instagram or a news feed?', params: [
+    { kind: 'choice', id: 'variant', ask: 'What kind of posts fill the feed?', fallback: 'text', options: {
+      text: 'Mostly short text posts with actions: X, Twitter, Threads, Mastodon, LinkedIn, forums', photo: 'Large photos or videos with a short caption: Instagram, TikTok, Pinterest, photo communities' } } ] },
+  { id: 'profile', title: 'Profile header', layouts: ['mobile_app', 'app_screen'], need: 'Does the brief ask for a user profile or account page showing a person with their picture, bio and follower or activity counts?', params: [] },
+  { id: 'media_player', title: 'Media player', layouts: ['mobile_app', 'app_screen'], need: 'Does the brief describe something people listen to or watch, such as podcasts, music, audiobooks, radio or video, where a now-playing player with controls belongs?', params: [] },
+  { id: 'media_list', title: 'Episode list', layouts: ['mobile_app', 'app_screen'], need: 'Is the brief about podcasts, music, audiobooks, radio, video or lessons, where a list of episodes, tracks or videos to play belongs?', params: [] },
   { id: 'kanban', title: 'Board', layouts: ['app_screen'], need: 'Does the brief describe work moving through stages, such as a kanban board, a sales pipeline, hiring stages or order fulfilment?', params: [] },
-  { id: 'meters', title: 'Progress meters', layouts: ['app_screen'], need: 'Does the brief describe goals, quotas, usage limits, budgets or progress that should be shown as progress bars?', params: [] },
+  { id: 'meters', title: 'Progress meters', layouts: ['app_screen', 'mobile_app'], need: 'Does the brief describe goals, quotas, usage limits, budgets or progress that should be shown as progress bars?', params: [] },
 ]
 
 export const BLOCK_BY_ID = Object.fromEntries(BLOCKS.map(b => [b.id, b]))

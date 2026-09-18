@@ -165,7 +165,7 @@ const top = (probs: Record<string, number>, n = 6) =>
 // Where a block sits on the page is a layout rule, not a judgement, so code owns it.
 const PAGE_ORDER = ['banner', 'navbar', 'sidebar', 'hero', 'logos', 'about', 'features', 'steps', 'flow', 'showcase', 'gallery', 'timeline', 'stats', 'testimonials',
   'pricing', 'faq', 'links', 'auth', 'form', 'locations', 'contact', 'newsletter', 'cta', 'footer',
-  'stat_cards', 'chart', 'meters', 'table', 'kanban', 'activity', 'checklist', 'chat', 'settings']
+  'profile', 'media_player', 'stories', 'composer', 'feed', 'media_list', 'stat_cards', 'chart', 'meters', 'table', 'kanban', 'activity', 'checklist', 'chat', 'settings', 'tabbar']
 
 /** What the previous turn picked, by decision id. Used for stickiness so a revision only changes what it is about. */
 export type Previous = Record<string, string>
@@ -260,7 +260,7 @@ export function assemble(brief: string, answers: Answers, pins: Pins = {}, seed 
 
   // A bigger catalog means more plausible blocks. A page is better for being edited: keep the most probable, drop the rest.
   const optional = chosen.filter(c => !c.always).sort((x, y) => y.p - x.p)
-  const limit = layout === 'marketing_page' ? MAX_OPTIONAL_PAGE : MAX_OPTIONAL_APP
+  const limit = layout === 'marketing_page' ? MAX_OPTIONAL_PAGE : layout === 'mobile_app' ? 4 : MAX_OPTIONAL_APP
   const pinnedOn = (id: string) => pins[q.block(id)] === true
   const dropped = new Set(optional.slice(limit).filter(c => !pinnedOn(c.b.id)).map(c => c.b.id))
   chosen = chosen.filter(c => !dropped.has(c.b.id))

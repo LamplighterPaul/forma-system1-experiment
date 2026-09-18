@@ -4,6 +4,7 @@ import type { Spec } from '@shared/harness'
 import { SLOTS, extractLinks, type DesignText } from '@shared/text'
 import { ActivityFeed, AuthCard, Chart, Chat, Checklist, DataTable, FormCard, Kanban, Meters, SettingsPanel, Sidebar, StatCards, Topbar } from './blocks/app'
 import { Flow } from './blocks/flow'
+import { Composer, Feed, MediaList, MediaPlayer, Profile, Stories, TabBar } from './blocks/social'
 import { About, Banner, Contact, Locations, Cta, Faq, Features, Footer, Gallery, Hero, Links, Logo, Logos, Navbar, Newsletter, Pricing, Showcase, Stats, Steps, Testimonials, Timeline } from './blocks/marketing'
 import type { BlockProps } from './blocks/types'
 
@@ -14,10 +15,11 @@ const BLOCKS: Record<string, ComponentType<BlockProps>> = {
   sidebar: Sidebar, stat_cards: StatCards, chart: Chart, table: DataTable, activity: ActivityFeed, checklist: Checklist,
   chat: Chat, settings: SettingsPanel, banner: Banner, about: About, links: Links, steps: Steps, timeline: Timeline, gallery: Gallery,
   contact: Contact, flow: Flow, kanban: Kanban, meters: Meters, locations: Locations,
+  stories: Stories, composer: Composer, feed: Feed, profile: Profile, media_player: MediaPlayer, media_list: MediaList, tabbar: TabBar,
 }
 
 // Width of each app-screen block on the three-column dashboard grid.
-const SPAN: Record<string, string> = { stat_cards: '@4xl:col-span-3', chart: '@4xl:col-span-2', table: '@4xl:col-span-2', showcase: '@4xl:col-span-3', chat: '@4xl:col-span-2', settings: '@4xl:col-span-2', flow: '@4xl:col-span-3', kanban: '@4xl:col-span-3', meters: '@4xl:col-span-1' }
+const SPAN: Record<string, string> = { stat_cards: '@4xl:col-span-3', chart: '@4xl:col-span-2', table: '@4xl:col-span-2', showcase: '@4xl:col-span-3', chat: '@4xl:col-span-2', settings: '@4xl:col-span-2', flow: '@4xl:col-span-3', kanban: '@4xl:col-span-3', meters: '@4xl:col-span-1', feed: '@4xl:col-span-2', composer: '@4xl:col-span-2', stories: '@4xl:col-span-3', media_list: '@4xl:col-span-2' }
 
 const RADII = ['0rem', '0.625rem', '1.1rem']
 const SERIF = "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif"
@@ -82,6 +84,18 @@ export function Canvas({ spec: decided, text, writing = false }: { spec: Spec; t
       ) : null}
 
       {spec.layout === 'diagram' ? render('flow') : null}
+
+      {spec.layout === 'mobile_app' ? (
+        <div className="flex justify-center bg-muted/50 px-4 py-8">
+          {/* A phone frame. Its own @container makes every block inside lay out for a narrow screen. */}
+          <div className="@container flex h-[760px] w-[372px] max-w-full flex-col overflow-hidden rounded-[2.4rem] border-[7px] border-foreground/85 bg-background shadow-xl">
+            <div className="flex items-center justify-between px-6 pt-2.5 text-[11px] font-medium"><span>9:41</span><span className="h-4 w-16 rounded-full bg-foreground/85" /><span>5G ▮</span></div>
+            <div className="flex items-center justify-between px-4 pt-3 pb-2"><h1 className="forma-heading text-xl font-semibold">{text?.blocks.tabbar?.heading || spec.copy.name}</h1><Logo name={spec.copy.name} /></div>
+            <div className="forma-grid grid min-h-0 flex-1 grid-cols-1 content-start overflow-x-hidden overflow-y-auto px-4 pb-4 [&>*]:min-w-0">{body.filter(b => b.id !== 'tabbar').map(b => render(b.id))}</div>
+            {render('tabbar')}
+          </div>
+        </div>
+      ) : null}
 
       {spec.layout === 'centered_card' ? (
         <div className="flex min-h-[640px] flex-col items-center justify-center gap-6 bg-muted/40 p-6">

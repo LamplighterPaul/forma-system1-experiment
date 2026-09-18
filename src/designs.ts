@@ -14,6 +14,8 @@ export interface Turn {
   error?: string
   /** Jev judged this message to be outside what Forma builds. It is kept in the thread but never sent again. */
   refused?: string
+  /** Jev's own review scored this turn as a poor match for what was asked. */
+  weak?: string
 }
 export interface Design { id: string; turns: Turn[]; pins: Pins; seed: number; createdAt: number }
 

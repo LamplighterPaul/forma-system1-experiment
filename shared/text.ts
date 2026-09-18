@@ -65,6 +65,14 @@ export const SLOTS: Record<string, SlotGuide> = {
     items: { count: 6, title: 'Card title', body: 'A tag, one word', meta: 'Column number 1, 2 or 3' } },
   meters: { about: 'Progress or usage meters', heading: 'Title', items: { count: 4, title: 'What is measured', body: 'A caption such as 7.2 of 10 GB', meta: 'Percent filled, a whole number from 0 to 100' } },
   chat: { about: 'A sample conversation', heading: 'Title', items: { count: 4, title: 'Who speaks: them or me', body: 'The message' } },
+  tabbar: { about: 'The title bar of the phone app', heading: 'The screen title shown at the top of the phone, one or two words' },
+  stories: { about: 'A row of round story avatars', items: { count: 6, title: 'A generic first name or handle, one word' } },
+  composer: { about: 'The box where someone writes a new post', heading: 'Placeholder prompt, such as What is happening?', button: 'Publish button label, one word' },
+  feed: { about: 'A feed of sample posts from fictional people. Make the posts about the subject of the brief', items: { count: 4, title: 'A fictional name and handle, such as Maya Borg @mayab', body: 'The post, one or two natural sentences, under 200 characters', meta: 'When, such as 2h' } },
+  profile: { about: 'A profile header for a fictional person or the named person in the brief', heading: 'Display name', sub: 'A one or two sentence bio',
+    items: { count: 3, title: 'A count such as 1,204', body: 'What it counts, such as Posts, Followers, Following' } },
+  media_player: { about: 'The now-playing card', heading: 'Title of the episode, track or video', sub: 'The show, artist or channel', button: 'Empty' },
+  media_list: { about: 'A list of things to play', heading: 'List heading, such as New episodes', items: { count: 5, title: 'Episode, track or video title', body: 'The show, artist or a short description', meta: 'Length, such as 42 min' } },
   settings: { about: 'A settings panel', heading: 'Title', sub: 'One short line' },
 }
 
