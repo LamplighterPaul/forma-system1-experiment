@@ -1,17 +1,22 @@
-# Forma · System One experiment
+# Forma · experimental design harness
 
-**A design harness where [Jev](https://typesafe.ai), a model that cannot write, makes every decision, and Luna only fills in the words.**
-Live at https://forma-experiment.zammitpaul.com
+**Experimental.** How fast and cheap can design get if a small, fast model makes the decisions and a
+traditional LLM is only allowed to write the words?
 
-Describe a page, an app screen or a form and press Enter. A design appears in about a
-second. Keep typing in the same design to iterate: "make it dark", "remove the FAQ",
-"call it Roast Club", "try something else".
+Live at https://forma-experiment.zammitpaul.com · by [Paul Zammit](https://zammitpaul.com/about)
 
-Jev is TypeSafe AI's "System One" model. It returns typed decisions with calibrated
-probabilities and cannot generate text or code. So this is not a chat model writing HTML.
-Forma does the work; Jev only picks.
+Describe a page, a screen, a form or a diagram and press Enter. A design appears in about a second and the
+words fill in a moment later. Keep typing to iterate: "make it dark", "remove the FAQ", "try something else".
+Switch Luna off to see what the decision model does alone.
 
-By [Paul Zammit](https://zammitpaul.com/about). Not affiliated with TypeSafe AI.
+- **[Jev](https://typesafe.ai)** is TypeSafe AI's "System One" model. It returns typed decisions with
+  probabilities and cannot generate text or code. It picks the whole design, reviews the result and acts as
+  the guardrail. About a second and $0.0005 per design.
+- **Luna** is OpenAI's `gpt-5.6-luna`, a small traditional LLM. It fills typed text slots and nothing else.
+  About three seconds and $0.0015 per design. Optional.
+- **Code** owns everything else: the catalog of prebuilt blocks, layout rules, limits, links and sanitising.
+
+This is an experiment, not a product. Not affiliated with TypeSafe AI or OpenAI.
 
 ## Two models, two jobs
 

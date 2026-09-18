@@ -20,8 +20,8 @@ export function ReviewCard({ review }: { review: Review }) {
         <p className="font-mono text-xs text-muted-foreground">fit {review.fit.toFixed(2)} / 3 · conf {pct(review.confidence)}</p>
       </div>
       <p className="mt-1 text-muted-foreground">{review.fitLabel}.</p>
-      {review.missing >= 0.5 ? <p className="mt-2 text-foreground">The brief asks for something the catalog has no block for ({pct(review.missing)}). That is a catalog gap, not a wrong pick.</p> : null}
-      {review.doubts.map(d => <p key={d.id} className="mt-2 text-foreground">Doubts “{d.title}” belongs ({pct(d.p)}).</p>)}
+      {review.missing >= 0.5 ? <p className="mt-2 text-foreground">Something in the brief has no block yet ({pct(review.missing)}).</p> : null}
+      {review.doubts.map(d => <p key={d.id} className="mt-2 text-foreground">Unsure about “{d.title}” ({pct(d.p)}).</p>)}
     </div>
   )
 }

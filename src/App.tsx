@@ -7,12 +7,11 @@ import { describeChanges, load, messagesOf, newDesign, newTurn, save, titleOf, t
 import { DecisionsPanel, PerformancePanel, totals, type Perf } from './Panels'
 
 const EXAMPLES = [
-  'Portfolio for a product designer called Maya Borg, with selected projects, a short about section and links to linkedin.com/in/example and github.com/example',
-  'Landing page for a coffee subscription called Bean Box. Warm and friendly, with pricing and an FAQ.',
-  'Analytics dashboard for an online shop: revenue, orders, a sales chart and a table of recent orders. Compact.',
-  'Dark sign-up screen for a developer tool called Shipyard, with GitHub login.',
-  'A mind map of everything a startup founder has to think about',
-  'Map of how a CI/CD pipeline works from commit to production, with tests, staging and rollback',
+  'Landing page for a coffee subscription called Bean Box, warm, with pricing',
+  'Portfolio for a designer called Maya Borg with projects and links to github.com/example',
+  'Dashboard for an online shop: revenue, orders and a sales chart',
+  'Dark sign-up screen for a developer tool called Shipyard',
+  'A mind map of what a startup founder has to think about',
 ]
 const WIDTHS = { desktop: '100%', tablet: '820px', phone: '390px' } as const
 type Panel = 'decisions' | 'performance'
@@ -100,8 +99,8 @@ export default function App() {
       if ('refused' in r) {
         // The words are code's: Jev only supplied the probability.
         const why = r.refused === 'unsafe'
-          ? `Jev flagged this (${Math.round(r.guard.unsafe * 100)}% unsafe): Forma will not build it, and instructions inside a brief are treated as text, not commands.`
-          : `Jev does not read this as something to design (${Math.round(r.guard.design * 100)}%). Describe a page, an app screen, a form or a diagram.`
+          ? `Jev flagged this (${Math.round(r.guard.unsafe * 100)}% unsafe). Forma will not build it.`
+          : `Not a design brief (${Math.round(r.guard.design * 100)}%). Try a page, a screen, a form or a diagram.`
         setTurn(t => ({ ...t, refused: why, stats: r.stats }))
         throw new Error('refused')
       }
@@ -210,10 +209,10 @@ export default function App() {
       <div className={`spectrum-flash shrink-0 ${busy ? 'busy' : ''}`} />
 
       <header className="flex flex-wrap items-center justify-between gap-x-4 border-b px-3 py-1.5">
-        <p><span className="font-semibold tracking-[0.2em] text-white">FORMA</span> <span className="text-muted-foreground">system one · jev decides, luna writes, code assembles</span></p>
+        <p><span className="font-semibold tracking-[0.2em] text-white">FORMA</span> <span className="bg-primary px-1 text-white">experimental</span> <span className="text-white">v{__APP_VERSION__}</span> <span className="hidden text-muted-foreground sm:inline">· designs from cheaper, faster models</span></p>
         <p className="flex items-center gap-2">
-          <span title="Jev makes every design decision. It is always on."><span className="text-muted-foreground">jev</span> <span className="text-white">[on]</span></span>
-          <span><span className="text-muted-foreground">luna</span> {lunaAvailable ? <Key active={lunaOn} onClick={toggleLuna} disabled={busy} title="Luna writes the words. Off: pre-written copy only.">{lunaOn ? 'on' : 'off'}</Key> : <span className="text-muted-foreground" title="No writer key on this server">[unavailable]</span>}</span>
+          <span title="Jev, a small decision model, picks the whole design. Always on."><span className="text-muted-foreground">jev</span> <span className="text-white">[on]</span></span>
+          <span><span className="text-muted-foreground">luna</span> {lunaAvailable ? <Key active={lunaOn} onClick={toggleLuna} disabled={busy} title="Luna, a traditional LLM, writes the words. Switch it off to see Jev alone.">{lunaOn ? 'on' : 'off'}</Key> : <span className="text-muted-foreground" title="No writer key on this server">[unavailable]</span>}</span>
         </p>
       </header>
 
@@ -241,8 +240,9 @@ export default function App() {
           <div className="min-h-40 flex-1 space-y-3 overflow-y-auto px-3 py-3">
             {!current.turns.length ? (
               <div className="space-y-3 text-muted-foreground">
-                <p className="text-foreground">Describe a page, an app screen or a form. Press enter.</p>
-                <p>Jev, a model that cannot write, answers about 270 typed questions in one call and picks from a catalog of prebuilt blocks. Luna writes the words into typed slots. Code assembles the result. Keep typing to iterate.</p>
+                <p className="text-foreground">An experiment: how fast and cheap can design get?</p>
+                <p><span className="text-foreground">Jev</span>, a small decision model, picks the design. <span className="text-foreground">Luna</span>, a traditional LLM, only writes the words. Switch Luna off to see Jev alone.</p>
+                <p>Describe a page, a screen, a form or a diagram. Press enter.</p>
                 <div>
                   {EXAMPLES.map((e, i) => <button key={e} type="button" onClick={() => send(e).catch(() => {})} className="block w-full cursor-pointer truncate py-0.5 text-left hover:text-white">{i + 1}. {e}</button>)}
                 </div>
@@ -269,7 +269,7 @@ export default function App() {
             <span className="text-primary">&gt;</span>
             <textarea ref={prompt} value={draft} rows={2} autoFocus maxLength={MAX_MESSAGE} onChange={e => setDraft(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() } }}
-              placeholder={hasBrief ? 'change something, or "try something else"' : 'describe what you want to see'}
+              placeholder={hasBrief ? 'change it, or "try something else"' : 'describe a design'}
               className="max-h-40 min-h-10 flex-1 resize-none bg-transparent text-white outline-none placeholder:text-muted-foreground/70" />
             <Key accent onClick={submit} disabled={busy || draft.trim().length < 3} title="Enter to send · Shift+Enter for a new line">⏎ send</Key>
           </div>
@@ -295,7 +295,7 @@ export default function App() {
               <Key onClick={() => { setShowPanel(false); store('forma.panel', 'off') }}>hide</Key>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              {!shown ? <p className="text-muted-foreground">Every typed decision Jev makes appears here with its probabilities, and what each round cost.</p>
+              {!shown ? <p className="text-muted-foreground">Jev’s decisions and what each round cost appear here.</p>
                 : panel === 'decisions' ? <DecisionsPanel result={shown} reviewed={reviewed} pins={current.pins} onPin={onPin} /> : <PerformancePanel perf={perf} session={session} />}
             </div>
           </aside>
@@ -316,7 +316,7 @@ export default function App() {
         <p className="flex flex-wrap items-center gap-x-1">
           {!showPanel ? <Key onClick={() => { setShowPanel(true); store('forma.panel', 'on') }}>decisions</Key> : null}
           <Key onClick={remix} disabled={busy || !shown} title="Explore Jev's runner-up choices. No model call.">remix</Key>
-          <span className="pl-2 text-muted-foreground">v{__APP_VERSION__} · <a href="https://zammitpaul.com/about" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-white">Paul Zammit</a> · <a href="https://github.com/LamplighterPaul/forma-system1-experiment" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-white">source</a></span>
+          <span className="pl-2 text-muted-foreground"><a href="https://zammitpaul.com/about" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-white">Paul Zammit</a> · <a href="https://github.com/LamplighterPaul/forma-system1-experiment" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-white">source</a></span>
         </p>
       </footer>
     </div>

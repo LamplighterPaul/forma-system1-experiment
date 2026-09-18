@@ -116,7 +116,7 @@ export function Flow({ spec, props, text }: BlockProps) {
         <h1 className="forma-heading text-3xl font-semibold tracking-tight text-balance @3xl:text-4xl">{text?.heading || spec.brief.split('\n')[0].slice(0, 80)}</h1>
         <p className="mt-2 mb-6 max-w-2xl text-muted-foreground">{text?.sub || 'A sample diagram. Switch Luna on to have the boxes written for this brief.'}</p>
         {diagram}
-        <p className="mt-3 text-xs text-muted-foreground">Drag to pan, drag a box to move it, use the controls to zoom.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Drag to pan. Drag a box to move it.</p>
       </section>
     )
   }

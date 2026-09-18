@@ -22,7 +22,7 @@ export function PerformancePanel({ perf, session }: { perf: Perf; session: { rou
   ]
   return (
     <div className="space-y-4 text-xs">
-      <p className="text-muted-foreground">One round: Jev decides, Luna writes, Jev reviews. Cached stages cost nothing.</p>
+      <p className="text-muted-foreground">Jev decides, Luna writes, Jev reviews.</p>
       <table className="w-full border-collapse">
         <thead><tr className="text-left text-muted-foreground">{['stage', 'model', 'time', 'tokens', 'cost'].map(h => <th key={h} className="border-b py-1.5 pr-2 font-normal last:pr-0 last:text-right">{h}</th>)}</tr></thead>
         <tbody>
@@ -52,7 +52,7 @@ export function PerformancePanel({ perf, session }: { perf: Perf; session: { rou
         <p className="mt-1 text-white">{session.rounds} round{session.rounds === 1 ? '' : 's'} · {usd(session.usd)}</p>
         <p className="mt-0.5 text-muted-foreground">jev {usd(session.jevUsd)} · luna {usd(session.lunaUsd)}</p>
       </div>
-      <p className="text-muted-foreground">Prices: Jev $0.042 per million input tokens, output free. Luna $0.20 in, $1.20 out.</p>
+      <p className="text-muted-foreground">Per million tokens: Jev $0.042 in. Luna $0.20 in, $1.20 out.</p>
     </div>
   )
 }
@@ -60,9 +60,9 @@ export function PerformancePanel({ perf, session }: { perf: Perf; session: { rou
 export function DecisionsPanel({ result, reviewed, pins, onPin }: { result: DesignResult; reviewed: ReviewResult | null; pins: Pins; onPin: (id: string, value: string | boolean | null) => void }) {
   return (
     <div className="space-y-3">
-      {result.stats.decider === 'mock' ? <p className="border p-2.5 text-xs">No Jev key on this server: a keyword mock is answering. These decisions are meaningless.</p> : null}
+      {result.stats.decider === 'mock' ? <p className="border p-2.5 text-xs">No Jev key on this server. A mock is answering.</p> : null}
       {reviewed ? <ReviewCard review={reviewed.review} /> : null}
-      <p className="text-xs text-muted-foreground">{result.decisions.length} typed decisions from one call. Click a bar to pin it and overrule Jev.</p>
+      <p className="text-xs text-muted-foreground">{result.decisions.length} decisions, one call. Click a bar to overrule Jev.</p>
       <Trace decisions={result.decisions} pins={pins} onPin={onPin} />
     </div>
   )
