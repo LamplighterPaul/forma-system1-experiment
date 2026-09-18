@@ -101,11 +101,11 @@ export function Flow({ spec, props, text }: BlockProps) {
     // `key` remounts the diagram when the graph changes, so it is fitted to view again.
     <div className={`w-full overflow-hidden rounded-xl border bg-muted/30 ${whole ? 'h-[620px]' : 'h-[440px]'}`}>
       <ReactFlow key={`${shape}:${items.map(i => `${i.title}>${i.meta}`).join('|')}`} defaultNodes={nodes} defaultEdges={edges} nodeTypes={nodeTypes}
-        fitView fitViewOptions={{ padding: 0.14, maxZoom: 1.15 }} minZoom={0.35} maxZoom={1.6} colorMode={spec.theme.dark ? 'dark' : 'light'} proOptions={{ hideAttribution: true }}
+        fitView fitViewOptions={{ padding: whole ? 0.24 : 0.14, maxZoom: 1.15 }} minZoom={0.35} maxZoom={1.6} colorMode={spec.theme.dark ? 'dark' : 'light'} proOptions={{ hideAttribution: true }}
         nodesConnectable={false} elementsSelectable={false} zoomOnScroll={false} preventScrolling={false} zoomOnDoubleClick>
         <Background gap={20} size={1} color="var(--border)" />
         <Controls showInteractive={false} position="bottom-left" />
-        {whole ? <MiniMap pannable zoomable position="top-right" nodeColor="var(--primary)" maskColor="color-mix(in oklab, var(--background) 70%, transparent)" style={{ background: 'var(--card)', border: '1px solid var(--border)' }} /> : null}
+        {whole ? <MiniMap pannable zoomable position="top-right" nodeColor="var(--primary)" maskColor="color-mix(in oklab, var(--background) 70%, transparent)" style={{ background: 'var(--card)', border: '1px solid var(--border)', width: 112, height: 76, margin: 8 }} /> : null}
       </ReactFlow>
     </div>
   )
